@@ -32,7 +32,7 @@ export class MenuScene extends Phaser.Scene {
     
     // Start background music if music is enabled
     if (AudioManager.shouldPlayMusic()) {
-      this.startMusic();
+      try { this.startMusic(); } catch (e) { console.warn('Menu music start failed:', e); }
     }
     
     // Music watchdog - check every 2 seconds if music should be playing but isn't
@@ -1022,12 +1022,20 @@ export class MenuScene extends Phaser.Scene {
   }
   
   playMusic() {
+    if (!this.cache.audio.has('menu-theme')) {
+      return;
+    }
     // Create or resume music
     if (!this.menuMusic) {
-      this.menuMusic = this.sound.add('menu-theme', {
-        loop: true,
-        volume: AudioManager.getEffectiveVolume('music')
-      });
+      try {
+        this.menuMusic = this.sound.add('menu-theme', {
+          loop: true,
+          volume: AudioManager.getEffectiveVolume('music')
+        });
+      } catch (e) {
+        console.warn('Could not create menu music:', e);
+        return;
+      }
       
       // Handle music ending/looping errors
       this.menuMusic.once('looped', () => {
@@ -1046,7 +1054,7 @@ export class MenuScene extends Phaser.Scene {
     }
     
     // Play or resume
-    if (!this.menuMusic.isPlaying) {
+    if (this.menuMusic && !this.menuMusic.isPlaying) {
       try {
         this.menuMusic.play();
       } catch (e) {
