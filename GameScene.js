@@ -696,7 +696,7 @@ export class GameScene extends Phaser.Scene {
       color: '#c9941a',
       stroke: '#000000',
       strokeThickness: 2,
-      letterSpacing: '1px',
+      letterSpacing: 1,
     });
     this.playerBaseLabel.setOrigin(0, 0.5);
     this.playerBaseLabel.setScrollFactor(0);
@@ -6089,6 +6089,9 @@ export class GameScene extends Phaser.Scene {
   }
   
   playCombatMusic(menuMusic) {
+    if (!this.cache.audio.has('battle-music')) {
+      return;
+    }
     // Create combat music
     if (!this.combatMusic) {
       this.combatMusic = this.sound.add('battle-music', {

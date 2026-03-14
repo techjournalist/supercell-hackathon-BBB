@@ -39,8 +39,8 @@ const config = {
     }
   },
   scene: [
-    MenuScene,
     SplashScene,
+    MenuScene,
     CampaignScene, 
     ComicIntroScene, 
     VikingCampaignScene, 

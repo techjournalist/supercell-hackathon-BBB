@@ -194,6 +194,10 @@ export class AlienCampaignScene extends Phaser.Scene {
       
       // Create and play Alien music
       if (!this.alienMusic) {
+        if (!this.cache.audio.has('alien-music')) {
+          console.warn('Alien music audio not loaded, skipping music');
+          return;
+        }
         console.log('Creating Alien music object');
         this.alienMusic = this.sound.add('alien-music', {
           loop: true,

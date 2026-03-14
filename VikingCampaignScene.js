@@ -168,6 +168,10 @@ export class VikingCampaignScene extends Phaser.Scene {
     
     // Create and play Viking music
     if (!this.vikingMusic) {
+      if (!this.cache.audio.has('viking-music')) {
+        console.warn('Viking music audio not loaded, skipping music');
+        return;
+      }
       console.log('Creating viking music object');
       this.vikingMusic = this.sound.add('viking-music', {
         loop: true,

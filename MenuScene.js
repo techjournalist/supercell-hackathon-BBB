@@ -100,7 +100,7 @@ export class MenuScene extends Phaser.Scene {
       fontSize: `${labelFontSize}px`,
       fontFamily: 'Arial, sans-serif',
       color: '#c9941a',
-      letterSpacing: '3px',
+      letterSpacing: 3,
     });
     campaignsLabel.setOrigin(0.5);
     currentY += 20;
@@ -154,7 +154,7 @@ export class MenuScene extends Phaser.Scene {
       fontSize: `${linkFontSize}px`,
       fontFamily: 'Arial, sans-serif',
       color: '#c9941a',
-      letterSpacing: '2px',
+      letterSpacing: 2,
       fontStyle: 'bold',
     });
     leaderboardLink.setOrigin(0.5);
@@ -266,7 +266,7 @@ export class MenuScene extends Phaser.Scene {
       fontFamily: 'Arial, sans-serif',
       color: '#c9941a',
       fontStyle: 'bold',
-      letterSpacing: '2px',
+      letterSpacing: 2,
     });
     title.setOrigin(0.5);
     title.setDepth(1001);
@@ -592,7 +592,7 @@ export class MenuScene extends Phaser.Scene {
       fontFamily: 'Arial, sans-serif',
       color: '#c9941a',
       fontStyle: 'bold',
-      letterSpacing: '2px',
+      letterSpacing: 2,
     });
     title.setOrigin(0.5);
     title.setDepth(1001);
@@ -728,10 +728,9 @@ export class MenuScene extends Phaser.Scene {
       fontFamily: 'Arial, sans-serif',
       color: '#e8d5a3',
       fontStyle: 'bold',
-      letterSpacing: '2px',
+      letterSpacing: 2,
     });
     buttonText.setOrigin(0.5);
-    buttonText.setStyle({ textTransform: 'uppercase' });
     
     // Hover effects
     buttonGraphics.on('pointerover', () => {
