@@ -108,6 +108,11 @@ export class SplashScene extends Phaser.Scene {
       this.transitionToMenu();
     });
 
+    // If video fails to load, skip to menu
+    this.videoElement.addEventListener("error", () => {
+      this.transitionToMenu();
+    });
+
     // Consolidated click/tap handler - handles both skip and unmute
     const skipHandler = () => {
       // If muted and not yet unmuted, unmute and keep video playing
@@ -147,10 +152,8 @@ export class SplashScene extends Phaser.Scene {
   }
 
   transitionToMenu() {
-    if (this.hasSkipped && this.videoElement && this.videoElement.paused) {
-      // Already transitioning
-      return;
-    }
+    if (this.isTransitioning) return;
+    this.isTransitioning = true;
     this.hasSkipped = true;
 
     // Fade out video container
