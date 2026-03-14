@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { MusicManager } from "./MusicManager.js";
 
 export class SplashScene extends Phaser.Scene {
   constructor() {
@@ -121,7 +122,7 @@ export class SplashScene extends Phaser.Scene {
 
     // Consolidated click/tap handler - handles both skip and unmute
     const skipHandler = () => {
-      // Use every click to try unlocking the Phaser Web Audio context
+      MusicManager.tryUnlock();
       const snd = this.game && this.game.sound;
       if (snd && snd.context && snd.context.state === 'suspended') {
         snd.context.resume().catch(() => {});
@@ -203,10 +204,10 @@ export class SplashScene extends Phaser.Scene {
         document.removeEventListener("keydown", this.keyHandler);
       }
 
-      // Show Phaser canvas again
       this.game.canvas.style.display = "block";
 
-      // Fade in from black and go to menu
+      MusicManager.play('menu-theme');
+
       this.cameras.main.fadeIn(500, 0, 0, 0);
       this.scene.start("MenuScene");
     }, 400);

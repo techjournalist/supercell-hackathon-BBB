@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { AudioManager } from './AudioManager.js';
 import { soundEffects } from './SoundEffectsManager.js';
+import { MusicManager } from './MusicManager.js';
 
 /**
  * AudioSettingsScene - Global audio settings menu
@@ -323,30 +324,7 @@ export class AudioSettingsScene extends Phaser.Scene {
   }
   
   applyMusicVolume() {
-    const menuScene = this.scene.get('MenuScene');
-    if (menuScene && menuScene.updateMusicVolume) {
-      menuScene.updateMusicVolume();
-    }
-    const campaignScene = this.scene.get('CampaignScene');
-    if (campaignScene && campaignScene.romanMusic) {
-      const vol = AudioManager.getEffectiveVolume('music');
-      campaignScene.romanMusic.setVolume(vol);
-    }
-    const vikingScene = this.scene.get('VikingCampaignScene');
-    if (vikingScene && vikingScene.vikingMusic) {
-      const vol = AudioManager.getEffectiveVolume('music');
-      vikingScene.vikingMusic.setVolume(vol);
-    }
-    const alienScene = this.scene.get('AlienCampaignScene');
-    if (alienScene && alienScene.alienMusic) {
-      const vol = AudioManager.getEffectiveVolume('music');
-      alienScene.alienMusic.setVolume(vol);
-    }
-    const gameScene = this.scene.get('GameScene');
-    if (gameScene && gameScene.combatMusic) {
-      const vol = AudioManager.getEffectiveVolume('music');
-      gameScene.combatMusic.setVolume(vol);
-    }
+    MusicManager.syncVolume();
   }
 
   updateMusicVolumeDisplay(value) {

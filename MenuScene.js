@@ -1,66 +1,35 @@
 import Phaser from 'phaser';
 import { AudioManager } from './AudioManager.js';
 import { soundEffects } from './SoundEffectsManager.js';
+import { MusicManager } from './MusicManager.js';
 
 export class MenuScene extends Phaser.Scene {
   constructor() {
     super({ key: 'MenuScene' });
-    this.menuMusic = null;
   }
-  
+
   preload() {
     this.load.on('loaderror', (file) => {
       console.warn(`Asset failed to load: ${file.key} (${file.url})`);
     });
 
-    // Load the menu background image
     this.load.image('menu-bg', 'https://rosebud.ai/assets/menu-screen.jpeg?D4E2');
+  }
 
-    // Load background music
-    this.load.audio('menu-theme', 'https://rosebud.ai/assets/main-theme-bbb.mp3?MNv3');
-  }
-  
-  init() {
-    // Resume music if returning to menu
-    if (this.menuMusic && !this.menuMusic.isPlaying && AudioManager.shouldPlayMusic()) {
-      this.menuMusic.resume();
-    }
-  }
-  
+  init() {}
+
   create() {
     const { width, height } = this.scale;
 
-    // Attempt to start music immediately
     if (AudioManager.shouldPlayMusic()) {
-      try { this.startMusic(); } catch (e) { console.warn('Menu music start failed:', e); }
+      MusicManager.play('menu-theme');
     }
 
-    // Many browsers block Web Audio until a user gesture on the page.
-    // After the SplashScene (DOM video), the Phaser canvas has not received
-    // a click yet, so the AudioContext may still be suspended.
-    // Register a one-time pointer-down on the scene to unlock it.
     this.input.once('pointerdown', () => {
+      MusicManager.tryUnlock();
       if (AudioManager.shouldPlayMusic()) {
-        const ctx = this.sound.context;
-        if (ctx && ctx.state === 'suspended') {
-          ctx.resume().then(() => this.startMusic()).catch(() => {});
-        } else {
-          this.startMusic();
-        }
+        MusicManager.play('menu-theme');
       }
-    });
-
-    // Music watchdog - check every 2 seconds if music should be playing but isn't
-    this.musicWatchdog = this.time.addEvent({
-      delay: 2000,
-      callback: () => {
-        if (AudioManager.shouldPlayMusic()) {
-          if (!this.menuMusic || !this.menuMusic.isPlaying) {
-            this.startMusic();
-          }
-        }
-      },
-      loop: true
     });
     
     // Full-screen background image
@@ -1018,110 +987,17 @@ export class MenuScene extends Phaser.Scene {
     overlay.once('pointerdown', closeTutorial);
   }
   
-  startMusic() {
-    // Only start if not already playing
-    if (this.menuMusic && this.menuMusic.isPlaying) {
-      return;
-    }
-    
-    // Ensure audio context is resumed (browser autoplay policy)
-    if (this.sound.context && this.sound.context.state === 'suspended') {
-      this.sound.context.resume().then(() => {
-        this.playMusic();
-      });
-    } else {
-      this.playMusic();
-    }
-  }
-  
-  playMusic() {
-    if (!this.cache.audio.has('menu-theme')) {
-      return;
-    }
-    // Create or resume music
-    if (!this.menuMusic) {
-      try {
-        this.menuMusic = this.sound.add('menu-theme', {
-          loop: true,
-          volume: AudioManager.getEffectiveVolume('music')
-        });
-      } catch (e) {
-        console.warn('Could not create menu music:', e);
-        return;
-      }
-      
-      // Handle music ending/looping errors
-      this.menuMusic.once('looped', () => {
-        // Ensure volume is correct on loop
-        this.updateMusicVolume();
-      });
-      
-      this.menuMusic.on('pause', () => {
-        // If paused unexpectedly, try to resume after delay
-        this.time.delayedCall(100, () => {
-          if (this.menuMusic && !this.menuMusic.isPlaying && AudioManager.shouldPlayMusic()) {
-            this.menuMusic.resume();
-          }
-        });
-      });
-    }
-    
-    // Play or resume
-    if (this.menuMusic && !this.menuMusic.isPlaying) {
-      try {
-        this.menuMusic.play();
-      } catch (e) {
-        console.log('Music play error:', e);
-      }
-    }
-  }
-  
-  stopMusic() {
-    if (this.menuMusic && this.menuMusic.isPlaying) {
-      this.menuMusic.stop();
-    }
-  }
-  
-  updateMusicVolume() {
-    if (this.menuMusic) {
-      const effectiveVolume = AudioManager.getEffectiveVolume('music');
-      this.menuMusic.setVolume(effectiveVolume);
-      
-      // Stop if volume is 0 or music disabled
-      if (effectiveVolume === 0 && this.menuMusic.isPlaying) {
-        this.menuMusic.pause();
-      } else if (effectiveVolume > 0 && !this.menuMusic.isPlaying) {
-        this.menuMusic.resume();
-      }
-    }
-  }
-  
   startTransition(nextScene) {
     if (this._transitioning) return;
     this._transitioning = true;
 
-    // Stop music when leaving menu
-    this.stopMusic();
+    MusicManager.stop();
 
-    // Fade out
     this.cameras.main.fadeOut(500, 0, 0, 0);
     this.cameras.main.once('camerafadeoutcomplete', () => {
       this.scene.start(nextScene);
     });
   }
-  
-  shutdown() {
-    // Clean up music watchdog
-    if (this.musicWatchdog) {
-      this.musicWatchdog.remove();
-      this.musicWatchdog = null;
-    }
-    
-    // Clean up music on scene shutdown
-    this.stopMusic();
-    if (this.menuMusic) {
-      this.menuMusic.destroy();
-      this.menuMusic = null;
-    }
-  }
+
+  shutdown() {}
 }

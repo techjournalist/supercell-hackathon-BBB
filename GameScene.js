@@ -15,6 +15,7 @@ import { Aqueduct } from './Aqueduct.js';
 import { AchievementManager } from './AchievementManager.js';
 import { AudioManager } from './AudioManager.js';
 import { soundEffects } from './SoundEffectsManager.js';
+import { MusicManager } from './MusicManager.js';
 
 export class GameScene extends Phaser.Scene {
   constructor() {
@@ -30,9 +31,6 @@ export class GameScene extends Phaser.Scene {
     this.load.image('sky', 'https://rosebud.ai/assets/purple-sky-background.webp?764C');
     this.load.image('mountains', 'https://rosebud.ai/assets/mountains-layer.webp?hr6l');
     this.load.image('ground', 'https://rosebud.ai/assets/ground-terrain.webp?y66d');
-    
-    // Load combat music
-    this.load.audio('battle-music', 'https://rosebud.ai/assets/battle-music-1.mp3?TljJ');
     
     // Load castle assets
     this.load.image('player-castle', 'https://rosebud.ai/assets/player-castle.webp?v688');
@@ -83,9 +81,16 @@ export class GameScene extends Phaser.Scene {
       }
     }
     
-    // Initialize combat music with cross-fade from menu
-    this.combatMusic = null;
-    this.startCombatMusic();
+    if (AudioManager.shouldPlayMusic()) {
+      MusicManager.play('battle-music');
+    }
+
+    this.input.once('pointerdown', () => {
+      MusicManager.tryUnlock();
+      if (AudioManager.shouldPlayMusic()) {
+        MusicManager.play('battle-music');
+      }
+    });
     
     // Initialize sound effects manager on first user interaction
     this.input.once('pointerdown', async () => {
@@ -6065,109 +6070,8 @@ export class GameScene extends Phaser.Scene {
     this.stopCombatMusic();
   }
   
-  startCombatMusic() {
-    // Only start if music is enabled
-    if (!AudioManager.shouldPlayMusic()) {
-      return;
-    }
-    
-    // Get the menu music from the menu scene if it exists
-    const menuScene = this.scene.get('MenuScene');
-    let menuMusic = null;
-    if (menuScene && menuScene.menuMusic && menuScene.menuMusic.isPlaying) {
-      menuMusic = menuScene.menuMusic;
-    }
-    
-    // Ensure audio context is resumed
-    if (this.sound.context && this.sound.context.state === 'suspended') {
-      this.sound.context.resume().then(() => {
-        this.playCombatMusic(menuMusic);
-      });
-    } else {
-      this.playCombatMusic(menuMusic);
-    }
-  }
-  
-  playCombatMusic(menuMusic) {
-    if (!this.cache.audio.has('battle-music')) {
-      return;
-    }
-    // Create combat music
-    if (!this.combatMusic) {
-      this.combatMusic = this.sound.add('battle-music', {
-        loop: true,
-        volume: 0 // Start at 0 for fade-in
-      });
-      
-      // Add error handling
-      this.combatMusic.once('looped', () => {
-        this.updateCombatMusicVolume();
-      });
-    }
-    
-    // Start playing combat music
-    this.combatMusic.play();
-    
-    // Cross-fade: fade out menu music and fade in combat music
-    const fadeDuration = 2000; // 2 seconds
-    
-    if (menuMusic) {
-      // Fade out menu music
-      this.tweens.add({
-        targets: menuMusic,
-        volume: 0,
-        duration: fadeDuration,
-        ease: 'Linear',
-        onComplete: () => {
-          // Stop menu music after fade
-          if (menuMusic.isPlaying) {
-            menuMusic.stop();
-          }
-        }
-      });
-    }
-    
-    // Fade in combat music
-    const targetVolume = AudioManager.getEffectiveVolume('music');
-    this.tweens.add({
-      targets: this.combatMusic,
-      volume: targetVolume,
-      duration: fadeDuration,
-      ease: 'Linear'
-    });
-    
-    // Add music watchdog - check every 3 seconds
-    this.musicWatchdog = this.time.addEvent({
-      delay: 3000,
-      callback: () => {
-        if (AudioManager.shouldPlayMusic()) {
-          if (!this.combatMusic || !this.combatMusic.isPlaying) {
-            console.log('Combat music stopped unexpectedly, restarting...');
-            this.startCombatMusic();
-          }
-        }
-      },
-      loop: true
-    });
-  }
-  
   updateCombatMusicVolume() {
-    if (this.combatMusic) {
-      const baseEffectiveVolume = AudioManager.getEffectiveVolume('music');
-      
-      // Apply battle intensity boost
-      const intensityBoost = this.battleIntensity * this.maxVolumeBoost;
-      const finalVolume = Math.min(1.0, baseEffectiveVolume + intensityBoost);
-      
-      this.combatMusic.setVolume(finalVolume);
-      
-      // Pause if volume is 0 or music disabled
-      if (baseEffectiveVolume === 0 && this.combatMusic.isPlaying) {
-        this.combatMusic.pause();
-      } else if (baseEffectiveVolume > 0 && !this.combatMusic.isPlaying) {
-        this.combatMusic.resume();
-      }
-    }
+    MusicManager.syncVolume();
   }
   
   calculateBattleIntensity() {
@@ -6288,37 +6192,11 @@ export class GameScene extends Phaser.Scene {
   }
   
   stopCombatMusic() {
-    // Stop watchdog
-    if (this.musicWatchdog) {
-      this.musicWatchdog.remove();
-      this.musicWatchdog = null;
-    }
-    
-    // Stop intensity icon pulse if active
     if (this.intensityIconPulsing && this.intensityIcon) {
       this.tweens.killTweensOf(this.intensityIcon);
       this.intensityIcon.setScale(1);
       this.intensityIconPulsing = false;
     }
-    
-    if (this.combatMusic && this.combatMusic.isPlaying) {
-      // Fade out before stopping
-      this.tweens.add({
-        targets: this.combatMusic,
-        volume: 0,
-        duration: 1000,
-        ease: 'Linear',
-        onComplete: () => {
-          if (this.combatMusic) {
-            this.combatMusic.stop();
-            this.combatMusic.destroy();
-            this.combatMusic = null;
-          }
-        }
-      });
-    } else if (this.combatMusic) {
-      this.combatMusic.destroy();
-      this.combatMusic = null;
-    }
+    MusicManager.stop();
   }
 }

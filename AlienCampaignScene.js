@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { AudioManager } from './AudioManager.js';
+import { MusicManager } from './MusicManager.js';
 
 export class AlienCampaignScene extends Phaser.Scene {
   constructor() {
@@ -7,48 +8,21 @@ export class AlienCampaignScene extends Phaser.Scene {
   }
   
   preload() {
-    // Load Zyx-9 portrait
     this.load.image('zyx9-portrait', 'https://rosebud.ai/assets/zyx9-portrait.webp?8tVr');
-    // Load generic background
     this.load.image('generic-bg', 'https://rosebud.ai/assets/generic-background.jpeg?BvlM');
-    // Load Alien campaign music
-    this.load.audio('alien-music', 'https://rosebud.ai/assets/alien-theme.mp3?nEMj');
   }
-  
+
   create() {
     const { width, height } = this.scale;
-    
-    // Initialize music flags first
-    this.musicStarted = false;
-    
-    // Stop any campaign music from other scenes
-    const romanScene = this.scene.get('CampaignScene');
-    if (romanScene && romanScene.romanMusic && romanScene.romanMusic.isPlaying) {
-      console.log('Stopping Roman campaign music');
-      romanScene.romanMusic.stop();
+
+    if (AudioManager.shouldPlayMusic()) {
+      MusicManager.play('alien-music');
     }
-    
-    const vikingScene = this.scene.get('VikingCampaignScene');
-    if (vikingScene && vikingScene.vikingMusic && vikingScene.vikingMusic.isPlaying) {
-      console.log('Stopping Viking campaign music');
-      vikingScene.vikingMusic.stop();
-    }
-    
-    // Stop menu music
-    const menuScene = this.scene.get('MenuScene');
-    if (menuScene && menuScene.menuMusic && menuScene.menuMusic.isPlaying) {
-      console.log('Stopping menu music');
-      menuScene.menuMusic.stop();
-    }
-    
-    // Start Alien campaign music
-    this.attemptMusicStart();
-    
-    // Add click handler to start music if autoplay blocked
+
     this.input.once('pointerdown', () => {
-      if (!this.musicStarted) {
-        console.log('User interaction detected, starting Alien music');
-        this.attemptMusicStart();
+      MusicManager.tryUnlock();
+      if (AudioManager.shouldPlayMusic()) {
+        MusicManager.play('alien-music');
       }
     });
     
@@ -180,110 +154,8 @@ export class AlienCampaignScene extends Phaser.Scene {
     });
   }
   
-  attemptMusicStart() {
-    try {
-      console.log('attemptMusicStart called for Alien campaign');
-      
-      // Only start if music is enabled
-      if (!AudioManager.shouldPlayMusic()) {
-        console.log('Music disabled by AudioManager');
-        return;
-      }
-      
-      console.log('Music enabled, proceeding...');
-      
-      // Create and play Alien music
-      if (!this.alienMusic) {
-        if (!this.cache.audio.has('alien-music')) {
-          console.warn('Alien music audio not loaded, skipping music');
-          return;
-        }
-        console.log('Creating Alien music object');
-        this.alienMusic = this.sound.add('alien-music', {
-          loop: true,
-          volume: AudioManager.getEffectiveVolume('music')
-        });
-        
-        // Add event listeners for debugging
-        this.alienMusic.once('play', () => {
-          console.log('Alien music started playing!');
-          this.musicStarted = true;
-        });
-        
-        this.alienMusic.once('looped', () => {
-          console.log('Alien music looped');
-        });
-      }
-      
-      console.log('Sound context state:', this.sound.context ? this.sound.context.state : 'no context');
-      console.log('Current volume:', AudioManager.getEffectiveVolume('music'));
-      
-      // Ensure audio context is resumed and play music
-      if (this.sound.context) {
-        if (this.sound.context.state === 'suspended') {
-          console.log('Resuming audio context...');
-          this.sound.context.resume().then(() => {
-            console.log('Audio context resumed, playing music');
-            this.alienMusic.play();
-          }).catch(err => {
-            console.error('Failed to resume audio context:', err);
-          });
-        } else {
-          console.log('Playing music directly (context already running)');
-          this.alienMusic.play();
-        }
-      } else {
-        console.error('No sound context available!');
-      }
-      
-      // Add music watchdog - check every 3 seconds
-      if (!this.musicWatchdog) {
-        this.musicWatchdog = this.time.addEvent({
-          delay: 3000,
-          callback: () => {
-            if (AudioManager.shouldPlayMusic()) {
-              if (!this.alienMusic || !this.alienMusic.isPlaying) {
-                console.log('Alien music not playing, current state:', this.alienMusic ? this.alienMusic.isPlaying : 'no music object');
-              }
-            }
-          },
-          loop: true
-        });
-      }
-    } catch (error) {
-      console.error('Error in attemptMusicStart:', error);
-      // Don't let music errors break the scene
-    }
-  }
-  
   stopAlienMusic() {
-    console.log('Stopping Alien music');
-    
-    // Stop watchdog
-    if (this.musicWatchdog) {
-      this.musicWatchdog.remove();
-      this.musicWatchdog = null;
-    }
-    
-    if (this.alienMusic && this.alienMusic.isPlaying) {
-      // Fade out before stopping
-      this.tweens.add({
-        targets: this.alienMusic,
-        volume: 0,
-        duration: 500,
-        ease: 'Linear',
-        onComplete: () => {
-          if (this.alienMusic) {
-            this.alienMusic.stop();
-            this.alienMusic.destroy();
-            this.alienMusic = null;
-          }
-        }
-      });
-    } else if (this.alienMusic) {
-      this.alienMusic.destroy();
-      this.alienMusic = null;
-    }
+    MusicManager.stop();
   }
   
   startLevel(levelNum) {
@@ -301,8 +173,5 @@ export class AlienCampaignScene extends Phaser.Scene {
     this.scene.start('AlienComicIntroScene');
   }
   
-  shutdown() {
-    // Clean up music when scene shuts down
-    this.stopAlienMusic();
-  }
+  shutdown() {}
 }

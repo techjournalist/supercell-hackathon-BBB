@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { AudioManager } from './AudioManager.js';
+import { MusicManager } from './MusicManager.js';
 
 export class VikingCampaignScene extends Phaser.Scene {
   constructor() {
@@ -7,34 +8,27 @@ export class VikingCampaignScene extends Phaser.Scene {
   }
   
   preload() {
-    // Load Erik portrait
     this.load.image('erik', 'https://rosebud.ai/assets/erik-portrait.webp?e1Ak');
-    // Load generic background
     this.load.image('generic-bg', 'https://rosebud.ai/assets/generic-background.jpeg?BvlM');
-    // Load Viking background music
-    this.load.audio('viking-music', 'https://rosebud.ai/assets/viking-background.mp3?O8ih');
   }
-  
+
   create() {
     const { width, height } = this.scale;
-    
-    // Background image
+
     const bg = this.add.image(width / 2, height / 2, 'generic-bg');
     bg.setDisplaySize(width, height);
-    
-    // Add semi-transparent overlay for better text readability
+
     const overlay = this.add.rectangle(0, 0, width, height, 0x000000, 0.4);
     overlay.setOrigin(0);
-    
-    // Try to start Viking background music immediately
-    this.musicStarted = false;
-    this.attemptMusicStart();
-    
-    // Add click handler to start music if autoplay blocked
+
+    if (AudioManager.shouldPlayMusic()) {
+      MusicManager.play('viking-music');
+    }
+
     this.input.once('pointerdown', () => {
-      if (!this.musicStarted) {
-        console.log('User interaction detected, starting music');
-        this.attemptMusicStart();
+      MusicManager.tryUnlock();
+      if (AudioManager.shouldPlayMusic()) {
+        MusicManager.play('viking-music');
       }
     });
     
@@ -134,128 +128,8 @@ export class VikingCampaignScene extends Phaser.Scene {
     this.createBackButton(100, height - 80);
   }
   
-  attemptMusicStart() {
-    console.log('attemptMusicStart called');
-    
-    // Only start if music is enabled
-    if (!AudioManager.shouldPlayMusic()) {
-      console.log('Music disabled by AudioManager');
-      return;
-    }
-    
-    console.log('Music enabled, proceeding...');
-    
-    // Stop any existing menu music from other scenes
-    const menuScene = this.scene.get('MenuScene');
-    if (menuScene && menuScene.menuMusic && menuScene.menuMusic.isPlaying) {
-      console.log('Stopping menu music');
-      menuScene.menuMusic.stop();
-    }
-    
-    // Stop Roman campaign music if playing
-    const romanScene = this.scene.get('CampaignScene');
-    if (romanScene && romanScene.romanMusic && romanScene.romanMusic.isPlaying) {
-      console.log('Stopping Roman campaign music');
-      romanScene.romanMusic.stop();
-    }
-    
-    // Stop Alien campaign music if playing
-    const alienScene = this.scene.get('AlienCampaignScene');
-    if (alienScene && alienScene.alienMusic && alienScene.alienMusic.isPlaying) {
-      console.log('Stopping Alien campaign music');
-      alienScene.alienMusic.stop();
-    }
-    
-    // Create and play Viking music
-    if (!this.vikingMusic) {
-      if (!this.cache.audio.has('viking-music')) {
-        console.warn('Viking music audio not loaded, skipping music');
-        return;
-      }
-      console.log('Creating viking music object');
-      this.vikingMusic = this.sound.add('viking-music', {
-        loop: true,
-        volume: AudioManager.getEffectiveVolume('music')
-      });
-      
-      // Add event listeners for debugging
-      this.vikingMusic.once('play', () => {
-        console.log('Viking music started playing!');
-        this.musicStarted = true;
-      });
-      
-      this.vikingMusic.once('looped', () => {
-        console.log('Viking music looped');
-      });
-    }
-    
-    console.log('Sound context state:', this.sound.context ? this.sound.context.state : 'no context');
-    console.log('Current volume:', AudioManager.getEffectiveVolume('music'));
-    
-    // Ensure audio context is resumed and play music
-    if (this.sound.context) {
-      if (this.sound.context.state === 'suspended') {
-        console.log('Resuming audio context...');
-        this.sound.context.resume().then(() => {
-          console.log('Audio context resumed, playing music');
-          this.vikingMusic.play();
-        }).catch(err => {
-          console.error('Failed to resume audio context:', err);
-        });
-      } else {
-        console.log('Playing music directly (context already running)');
-        try {
-          this.vikingMusic.play();
-        } catch (err) {
-          console.error('Failed to play music:', err);
-        }
-      }
-    } else {
-      console.error('No sound context available!');
-    }
-    
-    // Add music watchdog - check every 3 seconds (only once)
-    if (!this.musicWatchdog) {
-      this.musicWatchdog = this.time.addEvent({
-        delay: 3000,
-        callback: () => {
-          if (AudioManager.shouldPlayMusic()) {
-            if (!this.vikingMusic || !this.vikingMusic.isPlaying) {
-              console.log('Viking music not playing, current state:', this.vikingMusic ? this.vikingMusic.isPlaying : 'no music object');
-            }
-          }
-        },
-        loop: true
-      });
-    }
-  }
-  
   stopVikingMusic() {
-    // Stop watchdog
-    if (this.musicWatchdog) {
-      this.musicWatchdog.remove();
-      this.musicWatchdog = null;
-    }
-    
-    if (this.vikingMusic && this.vikingMusic.isPlaying) {
-      // Fade out before stopping
-      this.tweens.add({
-        targets: this.vikingMusic,
-        volume: 0,
-        duration: 500,
-        ease: 'Linear',
-        onComplete: () => {
-          if (this.vikingMusic) {
-            this.vikingMusic.stop();
-            this.vikingMusic.destroy();
-            this.vikingMusic = null;
-          }
-        }
-      });
-    } else if (this.vikingMusic) {
-      this.vikingMusic.destroy();
-      this.vikingMusic = null;
-    }
+    MusicManager.stop();
   }
   
   createBackButton(x, y) {
@@ -296,8 +170,5 @@ export class VikingCampaignScene extends Phaser.Scene {
     this.scene.start('VikingComicIntroScene');
   }
   
-  shutdown() {
-    // Clean up music when scene shuts down
-    this.stopVikingMusic();
-  }
+  shutdown() {}
 }

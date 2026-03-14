@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { AudioManager } from './AudioManager.js';
+import { MusicManager } from './MusicManager.js';
 
 export class CampaignScene extends Phaser.Scene {
   constructor() {
@@ -7,46 +8,34 @@ export class CampaignScene extends Phaser.Scene {
   }
   
   preload() {
-    // Load generic background
     this.load.image('generic-bg', 'https://rosebud.ai/assets/generic-background.jpeg?BvlM');
-    // Load Roman campaign music
-    this.load.audio('roman-music', 'https://rosebud.ai/assets/roman-theme.mp3?cnOY');
   }
-  
+
   create() {
-    // Initialize music flags first
-    this.musicStarted = false;
-    
-    // Build UI
     this.buildUI();
-    
-    // Start Roman campaign music after UI is built
-    this.attemptMusicStart();
-    
-    // Add click handler to start music if autoplay blocked
+
+    if (AudioManager.shouldPlayMusic()) {
+      MusicManager.play('roman-music');
+    }
+
     this.input.once('pointerdown', () => {
-      if (!this.musicStarted) {
-        console.log('User interaction detected, starting Roman music');
-        this.attemptMusicStart();
+      MusicManager.tryUnlock();
+      if (AudioManager.shouldPlayMusic()) {
+        MusicManager.play('roman-music');
       }
     });
-    
-    // Listen for when scene wakes up or resumes (returns from another scene)
+
     this.events.on('wake', () => {
-      console.log('CampaignScene woke up, rebuilding UI');
       this.buildUI();
-      // Restart music if needed
-      if (!this.romanMusic || !this.romanMusic.isPlaying) {
-        this.attemptMusicStart();
+      if (AudioManager.shouldPlayMusic()) {
+        MusicManager.play('roman-music');
       }
     });
-    
+
     this.events.on('resume', () => {
-      console.log('CampaignScene resumed, rebuilding UI');
       this.buildUI();
-      // Restart music if needed
-      if (!this.romanMusic || !this.romanMusic.isPlaying) {
-        this.attemptMusicStart();
+      if (AudioManager.shouldPlayMusic()) {
+        MusicManager.play('roman-music');
       }
     });
   }
@@ -365,156 +354,10 @@ export class CampaignScene extends Phaser.Scene {
     return container;
   }
   
-  attemptMusicStart() {
-    try {
-      console.log('attemptMusicStart called for Roman campaign');
-      
-      // Only start if music is enabled
-      if (!AudioManager.shouldPlayMusic()) {
-        console.log('Music disabled by AudioManager');
-        return;
-      }
-      
-      console.log('Music enabled, proceeding...');
-      
-      // Stop any existing menu music from other scenes (with safety checks)
-      try {
-        const menuScene = this.scene.get('MenuScene');
-        if (menuScene && menuScene.menuMusic && menuScene.menuMusic.isPlaying) {
-          console.log('Stopping menu music');
-          menuScene.menuMusic.stop();
-        }
-      } catch (e) {
-        console.log('Could not stop menu music:', e);
-      }
-      
-      // Stop Viking campaign music if playing (with safety checks)
-      try {
-        const vikingScene = this.scene.get('VikingCampaignScene');
-        if (vikingScene && vikingScene.vikingMusic && vikingScene.vikingMusic.isPlaying) {
-          console.log('Stopping Viking campaign music');
-          vikingScene.vikingMusic.stop();
-        }
-      } catch (e) {
-        console.log('Could not stop Viking music:', e);
-      }
-      
-      // Stop Alien campaign music if playing (with safety checks)
-      try {
-        const alienScene = this.scene.get('AlienCampaignScene');
-        if (alienScene && alienScene.alienMusic && alienScene.alienMusic.isPlaying) {
-          console.log('Stopping Alien campaign music');
-          alienScene.alienMusic.stop();
-        }
-      } catch (e) {
-        console.log('Could not stop Alien music:', e);
-      }
-      
-      // Create and play Roman music
-      if (!this.romanMusic) {
-        console.log('Creating Roman music object');
-        
-        // Check if the audio was loaded successfully
-        if (!this.cache.audio.exists('roman-music')) {
-          console.warn('Roman music audio not loaded, skipping music');
-          return;
-        }
-        
-        this.romanMusic = this.sound.add('roman-music', {
-          loop: true,
-          volume: AudioManager.getEffectiveVolume('music')
-        });
-        
-        // Add event listeners for debugging
-        this.romanMusic.once('play', () => {
-          console.log('Roman music started playing!');
-          this.musicStarted = true;
-        });
-        
-        this.romanMusic.once('looped', () => {
-          console.log('Roman music looped');
-        });
-        
-        this.romanMusic.once('error', (error) => {
-          console.error('Roman music error:', error);
-        });
-      }
-      
-      console.log('Sound context state:', this.sound.context ? this.sound.context.state : 'no context');
-      console.log('Current volume:', AudioManager.getEffectiveVolume('music'));
-      
-      // Ensure audio context is resumed and play music
-      if (this.sound.context) {
-        if (this.sound.context.state === 'suspended') {
-          console.log('Resuming audio context...');
-          this.sound.context.resume().then(() => {
-            console.log('Audio context resumed, playing music');
-            if (this.romanMusic) {
-              this.romanMusic.play();
-            }
-          }).catch(err => {
-            console.error('Failed to resume audio context:', err);
-          });
-        } else {
-          console.log('Playing music directly (context already running)');
-          if (this.romanMusic) {
-            this.romanMusic.play();
-          }
-        }
-      } else {
-        console.warn('No sound context available, skipping music');
-      }
-      
-      // Add music watchdog - check every 3 seconds (only once)
-      if (!this.musicWatchdog) {
-        this.musicWatchdog = this.time.addEvent({
-          delay: 3000,
-          callback: () => {
-            if (AudioManager.shouldPlayMusic()) {
-              if (!this.romanMusic || !this.romanMusic.isPlaying) {
-                console.log('Roman music not playing, current state:', this.romanMusic ? this.romanMusic.isPlaying : 'no music object');
-              }
-            }
-          },
-          loop: true
-        });
-      }
-    } catch (error) {
-      console.error('Error in attemptMusicStart:', error);
-      // Don't let music errors break the scene
-    }
-  }
-  
   stopRomanMusic() {
-    console.log('Stopping Roman music');
-    
-    // Stop watchdog
-    if (this.musicWatchdog) {
-      this.musicWatchdog.remove();
-      this.musicWatchdog = null;
-    }
-    
-    if (this.romanMusic && this.romanMusic.isPlaying) {
-      // Fade out before stopping
-      this.tweens.add({
-        targets: this.romanMusic,
-        volume: 0,
-        duration: 500,
-        ease: 'Linear',
-        onComplete: () => {
-          if (this.romanMusic) {
-            this.romanMusic.stop();
-            this.romanMusic.destroy();
-            this.romanMusic = null;
-          }
-        }
-      });
-    } else if (this.romanMusic) {
-      this.romanMusic.destroy();
-      this.romanMusic = null;
-    }
+    MusicManager.stop();
   }
-  
+
   createBackButton(x, y) {
     const button = this.add.rectangle(x, y, 200, 50, 0x8B4513);
     button.setStrokeStyle(3, 0xFFD700);
@@ -580,8 +423,5 @@ export class CampaignScene extends Phaser.Scene {
     this.scene.start('ComicIntroScene', { levelNum });
   }
   
-  shutdown() {
-    // Clean up music when scene shuts down
-    this.stopRomanMusic();
-  }
+  shutdown() {}
 }
