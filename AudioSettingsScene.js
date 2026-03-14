@@ -66,6 +66,8 @@ export class AudioSettingsScene extends Phaser.Scene {
     const sfxVolume = AudioManager.volumes.sfx;
     const musicMuted = AudioManager.muted.music;
     const sfxMuted = AudioManager.muted.sfx;
+    this._musicMuted = musicMuted;
+    this._sfxMuted = sfxMuted;
     
     // MUSIC VOLUME SECTION
     currentY += 20;
@@ -96,6 +98,7 @@ export class AudioSettingsScene extends Phaser.Scene {
       (value) => {
         AudioManager.setVolume('music', value);
         this.updateMusicVolumeDisplay(value);
+        this.applyMusicVolume();
       }
     );
     
@@ -118,8 +121,9 @@ export class AudioSettingsScene extends Phaser.Scene {
       currentY,
       'Mute Music',
       musicMuted,
-      (muted) => {
+      (toggled) => {
         AudioManager.toggleMute('music');
+        this.applyMusicVolume();
         soundEffects.playButtonClick();
       }
     );
@@ -148,10 +152,8 @@ export class AudioSettingsScene extends Phaser.Scene {
       'sfx',
       (value) => {
         AudioManager.setVolume('sfx', value);
-        soundEffects.updateVolume();
         this.updateSfxVolumeDisplay(value);
-        
-        // Play test sound
+        soundEffects.updateVolume();
         soundEffects.playButtonClick();
       }
     );
@@ -175,12 +177,10 @@ export class AudioSettingsScene extends Phaser.Scene {
       currentY,
       'Mute Sound Effects',
       sfxMuted,
-      (muted) => {
+      (toggled) => {
         AudioManager.toggleMute('sfx');
         soundEffects.updateVolume();
-        if (!muted) {
-          soundEffects.playButtonClick();
-        }
+        soundEffects.playButtonClick();
       }
     );
     
@@ -322,6 +322,33 @@ export class AudioSettingsScene extends Phaser.Scene {
     });
   }
   
+  applyMusicVolume() {
+    const menuScene = this.scene.get('MenuScene');
+    if (menuScene && menuScene.updateMusicVolume) {
+      menuScene.updateMusicVolume();
+    }
+    const campaignScene = this.scene.get('CampaignScene');
+    if (campaignScene && campaignScene.romanMusic) {
+      const vol = AudioManager.getEffectiveVolume('music');
+      campaignScene.romanMusic.setVolume(vol);
+    }
+    const vikingScene = this.scene.get('VikingCampaignScene');
+    if (vikingScene && vikingScene.vikingMusic) {
+      const vol = AudioManager.getEffectiveVolume('music');
+      vikingScene.vikingMusic.setVolume(vol);
+    }
+    const alienScene = this.scene.get('AlienCampaignScene');
+    if (alienScene && alienScene.alienMusic) {
+      const vol = AudioManager.getEffectiveVolume('music');
+      alienScene.alienMusic.setVolume(vol);
+    }
+    const gameScene = this.scene.get('GameScene');
+    if (gameScene && gameScene.combatMusic) {
+      const vol = AudioManager.getEffectiveVolume('music');
+      gameScene.combatMusic.setVolume(vol);
+    }
+  }
+
   updateMusicVolumeDisplay(value) {
     if (this.musicVolumeText) {
       this.musicVolumeText.setText(`${Math.round(value * 100)}%`);

@@ -121,6 +121,12 @@ export class SplashScene extends Phaser.Scene {
 
     // Consolidated click/tap handler - handles both skip and unmute
     const skipHandler = () => {
+      // Use every click to try unlocking the Phaser Web Audio context
+      const snd = this.game && this.game.sound;
+      if (snd && snd.context && snd.context.state === 'suspended') {
+        snd.context.resume().catch(() => {});
+      }
+
       // If muted and not yet unmuted, unmute and keep video playing
       if (this.isMuted && !this.hasUnmuted) {
         this.hasUnmuted = true;

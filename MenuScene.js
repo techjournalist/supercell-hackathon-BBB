@@ -29,19 +29,33 @@ export class MenuScene extends Phaser.Scene {
   
   create() {
     const { width, height } = this.scale;
-    
-    // Start background music if music is enabled
+
+    // Attempt to start music immediately
     if (AudioManager.shouldPlayMusic()) {
       try { this.startMusic(); } catch (e) { console.warn('Menu music start failed:', e); }
     }
-    
+
+    // Many browsers block Web Audio until a user gesture on the page.
+    // After the SplashScene (DOM video), the Phaser canvas has not received
+    // a click yet, so the AudioContext may still be suspended.
+    // Register a one-time pointer-down on the scene to unlock it.
+    this.input.once('pointerdown', () => {
+      if (AudioManager.shouldPlayMusic()) {
+        const ctx = this.sound.context;
+        if (ctx && ctx.state === 'suspended') {
+          ctx.resume().then(() => this.startMusic()).catch(() => {});
+        } else {
+          this.startMusic();
+        }
+      }
+    });
+
     // Music watchdog - check every 2 seconds if music should be playing but isn't
     this.musicWatchdog = this.time.addEvent({
       delay: 2000,
       callback: () => {
         if (AudioManager.shouldPlayMusic()) {
           if (!this.menuMusic || !this.menuMusic.isPlaying) {
-            console.log('Music stopped unexpectedly, restarting...');
             this.startMusic();
           }
         }
