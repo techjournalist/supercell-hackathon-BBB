@@ -12,7 +12,7 @@ export class AlienCampaignScene extends Phaser.Scene {
     // Load generic background
     this.load.image('generic-bg', 'https://rosebud.ai/assets/generic-background.jpeg?BvlM');
     // Load Alien campaign music
-    this.load.audio('alien-music', '/rosebud-assets/alien-theme.mp3?nEMj');
+    this.load.audio('alien-music', 'https://rosebud.ai/assets/alien-theme.mp3?nEMj');
   }
   
   create() {

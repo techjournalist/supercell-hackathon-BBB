@@ -32,7 +32,7 @@ export class GameScene extends Phaser.Scene {
     this.load.image('ground', 'https://rosebud.ai/assets/ground-terrain.webp?y66d');
     
     // Load combat music
-    this.load.audio('battle-music', '/rosebud-assets/battle-music-1.mp3?TljJ');
+    this.load.audio('battle-music', 'https://rosebud.ai/assets/battle-music-1.mp3?TljJ');
     
     // Load castle assets
     this.load.image('player-castle', 'https://rosebud.ai/assets/player-castle.webp?v688');

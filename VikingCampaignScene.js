@@ -12,7 +12,7 @@ export class VikingCampaignScene extends Phaser.Scene {
     // Load generic background
     this.load.image('generic-bg', 'https://rosebud.ai/assets/generic-background.jpeg?BvlM');
     // Load Viking background music
-    this.load.audio('viking-music', '/rosebud-assets/viking-background.mp3?O8ih');
+    this.load.audio('viking-music', 'https://rosebud.ai/assets/viking-background.mp3?O8ih');
   }
   
   create() {

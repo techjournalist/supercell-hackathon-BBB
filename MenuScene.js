@@ -17,7 +17,7 @@ export class MenuScene extends Phaser.Scene {
     this.load.image('menu-bg', 'https://rosebud.ai/assets/menu-screen.jpeg?D4E2');
 
     // Load background music
-    this.load.audio('menu-theme', '/rosebud-assets/main-theme-bbb.mp3?MNv3');
+    this.load.audio('menu-theme', 'https://rosebud.ai/assets/main-theme-bbb.mp3?MNv3');
   }
   
   init() {
