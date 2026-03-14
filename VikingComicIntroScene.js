@@ -6,7 +6,7 @@ export class VikingComicIntroScene extends Phaser.Scene {
   }
   
   preload() {
-    this.load.image('erik', 'https://rosebud.ai/assets/erik-portrait.webp.webp?e1Ak');
+    this.load.image('erik', 'https://rosebud.ai/assets/erik-portrait.webp?e1Ak');
   }
   
   create() {

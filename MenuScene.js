@@ -9,9 +9,13 @@ export class MenuScene extends Phaser.Scene {
   }
   
   preload() {
+    this.load.on('loaderror', (file) => {
+      console.warn(`Asset failed to load: ${file.key} (${file.url})`);
+    });
+
     // Load the menu background image
     this.load.image('menu-bg', 'https://rosebud.ai/assets/menu-screen.jpeg?D4E2');
-    
+
     // Load background music
     this.load.audio('menu-theme', '/rosebud-assets/main-theme-bbb.mp3?MNv3');
   }
@@ -1072,9 +1076,12 @@ export class MenuScene extends Phaser.Scene {
   }
   
   startTransition(nextScene) {
+    if (this._transitioning) return;
+    this._transitioning = true;
+
     // Stop music when leaving menu
     this.stopMusic();
-    
+
     // Fade out
     this.cameras.main.fadeOut(500, 0, 0, 0);
     this.cameras.main.once('camerafadeoutcomplete', () => {

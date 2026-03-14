@@ -82,7 +82,7 @@ export class UIManager {
     
     // Handle shield icon for player base
     if (baseKey === 'player' && shieldIcon) {
-      const enemiesNearBase = this.scene.enemyUnits.filter(u => {
+      const enemiesNearBase = (this.scene.enemyUnits || []).filter(u => {
         const dist = Phaser.Math.Distance.Between(u.x, u.y, base.x, base.y);
         return dist < 400 && !u.isDead;
       });

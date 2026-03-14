@@ -8,7 +8,7 @@ export class VikingCampaignScene extends Phaser.Scene {
   
   preload() {
     // Load Erik portrait
-    this.load.image('erik', 'https://rosebud.ai/assets/erik-portrait.webp.webp?e1Ak');
+    this.load.image('erik', 'https://rosebud.ai/assets/erik-portrait.webp?e1Ak');
     // Load generic background
     this.load.image('generic-bg', 'https://rosebud.ai/assets/generic-background.jpeg?BvlM');
     // Load Viking background music

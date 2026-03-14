@@ -1,3 +1,19 @@
+function safeLocalStorageGet(key, fallback) {
+  try {
+    return localStorage.getItem(key);
+  } catch (e) {
+    return fallback;
+  }
+}
+
+function safeLocalStorageSet(key, value) {
+  try {
+    localStorage.setItem(key, value);
+  } catch (e) {
+    // silently ignore in private browsing or when storage is full
+  }
+}
+
 // Centralized State Manager - handles cross-scene state
 export class StateManager {
   constructor() {
@@ -7,24 +23,24 @@ export class StateManager {
       vikingCampaign: false,
       alienCampaign: false,
       alienLevel: null,
-      
+
       // Skirmish settings
       skirmishDifficulty: null,
-      
+
       // Challenge mode
       challengeMode: null,
-      
+
       // Multiplayer
       multiplayerSettings: null,
-      
+
       // Player faction
       playerFaction: 'roman',
       enemyFaction: 'alien',
-      
+
       // Persistent data (synced with localStorage)
-      totalKills: parseInt(localStorage.getItem('total_kills') || '0'),
-      achievements: JSON.parse(localStorage.getItem('achievements') || '{}'),
-      campaignProgress: JSON.parse(localStorage.getItem('campaign_progress') || '{"roman": 0, "viking": 0, "alien": 0}'),
+      totalKills: parseInt(safeLocalStorageGet('total_kills', '0') || '0'),
+      achievements: JSON.parse(safeLocalStorageGet('achievements', '{}') || '{}'),
+      campaignProgress: JSON.parse(safeLocalStorageGet('campaign_progress', '{"roman": 0, "viking": 0, "alien": 0}') || '{"roman": 0, "viking": 0, "alien": 0}'),
     };
   }
   
@@ -50,9 +66,9 @@ export class StateManager {
   
   // Persist data to localStorage
   savePersistentData() {
-    localStorage.setItem('total_kills', this.state.totalKills.toString());
-    localStorage.setItem('achievements', JSON.stringify(this.state.achievements));
-    localStorage.setItem('campaign_progress', JSON.stringify(this.state.campaignProgress));
+    safeLocalStorageSet('total_kills', this.state.totalKills.toString());
+    safeLocalStorageSet('achievements', JSON.stringify(this.state.achievements));
+    safeLocalStorageSet('campaign_progress', JSON.stringify(this.state.campaignProgress));
   }
   
   // Update total kills and save

@@ -22,6 +22,10 @@ export class GameScene extends Phaser.Scene {
   }
   
   preload() {
+    this.load.on('loaderror', (file) => {
+      console.warn(`Asset failed to load: ${file.key} (${file.url})`);
+    });
+
     // Load background assets
     this.load.image('sky', 'https://rosebud.ai/assets/purple-sky-background.webp?764C');
     this.load.image('mountains', 'https://rosebud.ai/assets/mountains-layer.webp?hr6l');
@@ -33,7 +37,7 @@ export class GameScene extends Phaser.Scene {
     // Load castle assets
     this.load.image('player-castle', 'https://rosebud.ai/assets/player-castle.webp?v688');
     this.load.image('alien-base', 'https://rosebud.ai/assets/alien-base.webp?YyOt');
-    this.load.image('viking-base', 'https://rosebud.ai/assets/viking-base.webp.webp?TXvW');
+    this.load.image('viking-base', 'https://rosebud.ai/assets/viking-base.webp?TXvW');
     
     // Load unit assets - Roman units (player)
     this.load.image('worker', 'https://rosebud.ai/assets/worker-unit.webp?J01Z');
@@ -44,16 +48,16 @@ export class GameScene extends Phaser.Scene {
     
     // Load unit assets - Alien units (enemy)
     this.load.image('harvester', 'https://rosebud.ai/assets/harvester-unit.webp?Rn3x');
-    this.load.image('alien-scout', 'https://rosebud.ai/assets/alien-scout-unit.webp.webp?fkPM');
+    this.load.image('alien-scout', 'https://rosebud.ai/assets/alien-scout-unit.webp?fkPM');
     this.load.image('drone', 'https://rosebud.ai/assets/drone-unit.webp?15fr');
     this.load.image('blaster', 'https://rosebud.ai/assets/blaster-unit.webp?jDED');
     this.load.image('overlord', 'https://rosebud.ai/assets/overlord-unit.webp?htbf');
     
     // Load unit assets - Viking units
-    this.load.image('thrall', 'https://rosebud.ai/assets/thrall-unit.webp.webp?KkBj');
-    this.load.image('berserker', 'https://rosebud.ai/assets/berserker-unit.webp.webp?J07Q');
-    this.load.image('axeThrower', 'https://rosebud.ai/assets/axe-thrower-unit.webp.webp?IyG2');
-    this.load.image('jarl', 'https://rosebud.ai/assets/jarl-unit.webp.webp?QY82');
+    this.load.image('thrall', 'https://rosebud.ai/assets/thrall-unit.webp?KkBj');
+    this.load.image('berserker', 'https://rosebud.ai/assets/berserker-unit.webp?J07Q');
+    this.load.image('axeThrower', 'https://rosebud.ai/assets/axe-thrower-unit.webp?IyG2');
+    this.load.image('jarl', 'https://rosebud.ai/assets/jarl-unit.webp?QY82');
     
     // Legacy units (if needed)
     this.load.image('knight', 'https://rosebud.ai/assets/knight-unit.webp?ZAkc');
@@ -63,7 +67,7 @@ export class GameScene extends Phaser.Scene {
     // Load resource assets
     this.load.image('gold-mine', 'https://rosebud.ai/assets/gold-mine.webp?zSoi');
     this.load.image('alien-mine', 'https://rosebud.ai/assets/alien-mine.webp?qbWt');
-    this.load.image('viking-mine', 'https://rosebud.ai/assets/viking-mine.webp.webp?SnGW');
+    this.load.image('viking-mine', 'https://rosebud.ai/assets/viking-mine.webp?SnGW');
   }
   
   create() {

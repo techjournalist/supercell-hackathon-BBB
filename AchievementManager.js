@@ -1,3 +1,11 @@
+function safeGet(key) {
+  try { return localStorage.getItem(key); } catch (e) { return null; }
+}
+
+function safeSet(key, value) {
+  try { localStorage.setItem(key, value); } catch (e) { /* ignore */ }
+}
+
 // Achievement Manager - handles unlocking and notifications
 export class AchievementManager {
   constructor(scene) {
@@ -7,13 +15,13 @@ export class AchievementManager {
   
   unlockAchievement(achievementId) {
     // Check if already unlocked
-    if (localStorage.getItem(`achievement_${achievementId}`) === 'true') {
+    if (safeGet(`achievement_${achievementId}`) === 'true') {
       return false; // Already unlocked
     }
-    
+
     // Unlock the achievement
-    localStorage.setItem(`achievement_${achievementId}`, 'true');
-    localStorage.setItem(`achievement_date_${achievementId}`, new Date().toISOString());
+    safeSet(`achievement_${achievementId}`, 'true');
+    safeSet(`achievement_date_${achievementId}`, new Date().toISOString());
     
     // Get achievement info
     const achievementData = this.getAchievementData(achievementId);
@@ -165,9 +173,9 @@ export class AchievementManager {
   }
   
   checkAllCampaigns() {
-    const roman = localStorage.getItem('achievement_roman_complete') === 'true';
-    const viking = localStorage.getItem('achievement_viking_complete') === 'true';
-    const alien = localStorage.getItem('achievement_alien_complete') === 'true';
+    const roman = safeGet('achievement_roman_complete') === 'true';
+    const viking = safeGet('achievement_viking_complete') === 'true';
+    const alien = safeGet('achievement_alien_complete') === 'true';
     
     if (roman && viking && alien) {
       this.unlockAchievement('all_campaigns');

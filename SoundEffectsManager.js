@@ -49,25 +49,24 @@ export class SoundEffectsManager {
    * Must be called after user interaction due to browser autoplay policies
    */
   async initialize() {
-    if (this.initialized) return;
-    
+    if (this.initialized || this._initializing) return;
+    this._initializing = true;
+
     try {
       await Tone.start();
-      console.log('Tone.js audio context started');
-      
-      // Create master volume control
+
       this.masterVolume = new Tone.Volume(0).toDestination();
-      
-      // Create synths for different sound types
+
       this.createMovementSynths();
       this.createCombatSynths();
       this.createSpellSynths();
       this.createUISynths();
-      
+
       this.initialized = true;
-      console.log('SoundEffectsManager initialized');
     } catch (error) {
       console.error('Failed to initialize SoundEffectsManager:', error);
+    } finally {
+      this._initializing = false;
     }
   }
   

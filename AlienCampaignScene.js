@@ -8,7 +8,7 @@ export class AlienCampaignScene extends Phaser.Scene {
   
   preload() {
     // Load Zyx-9 portrait
-    this.load.image('zyx9-portrait', 'https://rosebud.ai/assets/zyx9-portrait.webp.webp?8tVr');
+    this.load.image('zyx9-portrait', 'https://rosebud.ai/assets/zyx9-portrait.webp?8tVr');
     // Load generic background
     this.load.image('generic-bg', 'https://rosebud.ai/assets/generic-background.jpeg?BvlM');
     // Load Alien campaign music
