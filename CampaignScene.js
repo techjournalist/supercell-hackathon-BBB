@@ -10,7 +10,7 @@ export class CampaignScene extends Phaser.Scene {
     // Load generic background
     this.load.image('generic-bg', 'https://rosebud.ai/assets/generic-background.jpeg?BvlM');
     // Load Roman campaign music
-    this.load.audio('roman-music', 'https://rosebud.ai/assets/roman-theme.mp3?cnOY');
+    this.load.audio('roman-music', '/rosebud-assets/roman-theme.mp3?cnOY');
   }
   
   create() {

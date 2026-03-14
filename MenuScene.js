@@ -13,7 +13,7 @@ export class MenuScene extends Phaser.Scene {
     this.load.image('menu-bg', 'https://rosebud.ai/assets/menu-screen.jpeg?D4E2');
     
     // Load background music
-    this.load.audio('menu-theme', 'https://rosebud.ai/assets/main-theme-bbb.mp3?MNv3');
+    this.load.audio('menu-theme', '/rosebud-assets/main-theme-bbb.mp3?MNv3');
   }
   
   init() {
@@ -239,8 +239,8 @@ export class MenuScene extends Phaser.Scene {
     const currentVolume = parseFloat(localStorage.getItem('gameVolume') || '0.7');
     
     // Get separate music/sfx settings (defaults: both enabled)
-    const musicEnabled = localStorage.getItem('musicEnabled') !== 'false';
-    const sfxEnabled = localStorage.getItem('sfxEnabled') !== 'false';
+    let musicEnabled = localStorage.getItem('musicEnabled') !== 'false';
+    let sfxEnabled = localStorage.getItem('sfxEnabled') !== 'false';
     
     // Dark overlay
     const overlay = this.add.rectangle(0, 0, width, height, 0x000000, 0.7);
