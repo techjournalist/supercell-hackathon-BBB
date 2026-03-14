@@ -84,6 +84,7 @@ export class SplashScene extends Phaser.Scene {
         this.isMuted = true;
         this.videoElement.play().catch((err2) => {
           console.log("Muted autoplay also failed:", err2);
+          this.transitionToMenu();
         });
 
         // Show a "click to unmute" message
@@ -112,6 +113,11 @@ export class SplashScene extends Phaser.Scene {
     this.videoElement.addEventListener("error", () => {
       this.transitionToMenu();
     });
+
+    // Hard fallback: if nothing else triggered a transition after 12s, go to menu
+    this.fallbackTimer = setTimeout(() => {
+      this.transitionToMenu();
+    }, 12000);
 
     // Consolidated click/tap handler - handles both skip and unmute
     const skipHandler = () => {
@@ -155,6 +161,10 @@ export class SplashScene extends Phaser.Scene {
     if (this.isTransitioning) return;
     this.isTransitioning = true;
     this.hasSkipped = true;
+    if (this.fallbackTimer) {
+      clearTimeout(this.fallbackTimer);
+      this.fallbackTimer = null;
+    }
 
     // Fade out video container
     if (this.videoContainer) {
