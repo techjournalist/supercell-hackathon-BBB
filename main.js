@@ -15,6 +15,8 @@ import { FactionSelectScene } from './FactionSelectScene.js';
 import { MultiplayerSetupScene } from './MultiplayerSetupScene.js';
 import { MultiplayerGameScene } from './MultiplayerGameScene.js';
 import { MultiplayerVictoryScene } from './MultiplayerVictoryScene.js';
+import { OnlineGameScene } from './OnlineGameScene.js';
+import { FriendsScene } from './FriendsScene.js';
 import { GameScene } from './GameScene.js';
 import { VictoryScene } from './VictoryScene.js';
 import { DefeatScene } from './DefeatScene.js';
@@ -55,8 +57,10 @@ const config = {
     FactionSelectScene, 
     MultiplayerSetupScene, 
     MultiplayerGameScene, 
-    MultiplayerVictoryScene, 
-    GameScene, 
+    MultiplayerVictoryScene,
+    OnlineGameScene,
+    FriendsScene,
+    GameScene,
     VictoryScene, 
     DefeatScene, 
     PauseMenuScene,

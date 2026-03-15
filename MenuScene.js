@@ -159,7 +159,23 @@ export class MenuScene extends Phaser.Scene {
     leaderboardLink.on('pointerdown', () => {
       this.startTransition('LeaderboardScene');
     });
-    
+
+    currentY += 24;
+    const friendsLink = this.add.text(width / 2, currentY, 'FRIENDS', {
+      fontSize: `${linkFontSize}px`,
+      fontFamily: 'Arial, sans-serif',
+      color: '#44aa66',
+      letterSpacing: 2,
+      fontStyle: 'bold',
+    });
+    friendsLink.setOrigin(0.5);
+    friendsLink.setInteractive({ useHandCursor: true });
+    friendsLink.on('pointerover', () => friendsLink.setColor('#66ff88'));
+    friendsLink.on('pointerout', () => friendsLink.setColor('#44aa66'));
+    friendsLink.on('pointerdown', () => {
+      this.startTransition('FriendsScene');
+    });
+
     // Footer version text - absolute bottom with responsive font
     const footerFontSize = Math.max(9, Math.min(width * 0.01, 11));
     const footer = this.add.text(width / 2, height - 8, 'v0.1 Early Access', {
