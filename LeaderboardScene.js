@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { getLeaderboard } from './supabase.js';
 
 export class LeaderboardScene extends Phaser.Scene {
   constructor() {
@@ -132,10 +133,11 @@ export class LeaderboardScene extends Phaser.Scene {
     // Headers
     const headerY = this.contentY + 40;
     const headers = [
-      { text: 'RANK', x: width / 2 - 350 },
-      { text: 'PLAYER', x: width / 2 - 150 },
-      { text: 'TIME', x: width / 2 + 150 },
-      { text: 'DATE', x: width / 2 + 350 },
+      { text: 'RANK', x: width / 2 - 380 },
+      { text: 'PLAYER', x: width / 2 - 180 },
+      { text: 'SCORE', x: width / 2 + 20 },
+      { text: 'KILLS', x: width / 2 + 180 },
+      { text: 'DATE', x: width / 2 + 360 },
     ];
     
     this.headerTexts = [];
@@ -153,42 +155,54 @@ export class LeaderboardScene extends Phaser.Scene {
     this.entryContainer = this.add.container(0, 0);
   }
   
-  loadLeaderboardData() {
-    // Load from localStorage (in production, this would be an API call)
-    const roman = this.getLocalLeaderboard('roman');
-    const viking = this.getLocalLeaderboard('viking');
-    const alien = this.getLocalLeaderboard('alien');
-    
-    this.leaderboardData = {
-      roman: roman,
-      viking: viking,
-      alien: alien,
-    };
-    
+  async loadLeaderboardData() {
+    // Show loading indicator
+    const { width } = this.scale;
+    const loadingText = this.add.text(width / 2, this.contentY + 150, 'Loading...', {
+      fontSize: '18px',
+      fontFamily: 'Press Start 2P',
+      color: '#888888',
+    });
+    loadingText.setOrigin(0.5);
+
+    // Initialize with empty data
+    this.leaderboardData = { roman: [], viking: [], alien: [] };
+
+    try {
+      const all = await getLeaderboard(null, 50);
+
+      const mapEntry = e => ({
+        player: e.display_name || 'Commander',
+        time: e.time_seconds || 0,
+        score: e.score || 0,
+        kills: e.enemies_killed || 0,
+        date: e.created_at ? new Date(e.created_at).toLocaleDateString() : '---',
+        faction: e.faction,
+      });
+
+      this.leaderboardData = {
+        roman: all.filter(e => e.faction === 'roman').map(mapEntry),
+        viking: all.filter(e => e.faction === 'viking').map(mapEntry),
+        alien: all.filter(e => e.faction === 'alien').map(mapEntry),
+      };
+    } catch (e) {
+      // Fall back to localStorage on error
+      this.leaderboardData = {
+        roman: this.getLocalLeaderboard('roman'),
+        viking: this.getLocalLeaderboard('viking'),
+        alien: this.getLocalLeaderboard('alien'),
+      };
+    }
+
+    if (loadingText.active) loadingText.destroy();
     this.refreshLeaderboardContent();
   }
-  
+
   getLocalLeaderboard(campaign) {
     const key = `leaderboard_${campaign}`;
     const stored = localStorage.getItem(key);
-    
-    if (stored) {
-      return JSON.parse(stored);
-    }
-    
-    // Return empty leaderboard with sample entries
-    return [
-      { player: '---', time: 0, date: '---' },
-      { player: '---', time: 0, date: '---' },
-      { player: '---', time: 0, date: '---' },
-      { player: '---', time: 0, date: '---' },
-      { player: '---', time: 0, date: '---' },
-      { player: '---', time: 0, date: '---' },
-      { player: '---', time: 0, date: '---' },
-      { player: '---', time: 0, date: '---' },
-      { player: '---', time: 0, date: '---' },
-      { player: '---', time: 0, date: '---' },
-    ];
+    if (stored) return JSON.parse(stored);
+    return Array(10).fill({ player: '---', time: 0, date: '---' });
   }
   
   refreshLeaderboardContent() {
@@ -199,41 +213,57 @@ export class LeaderboardScene extends Phaser.Scene {
     const { width } = this.scale;
     const startY = this.contentY + 80;
     
+    if (data.length === 0) {
+      const empty = this.add.text(width / 2, startY + 60, 'No entries yet.\nPlay a game to appear here!', {
+        fontSize: '16px',
+        fontFamily: 'Press Start 2P',
+        color: '#666666',
+        align: 'center',
+      });
+      empty.setOrigin(0.5);
+      this.entryContainer.add(empty);
+    }
+
     data.slice(0, 10).forEach((entry, index) => {
       const y = startY + index * 45;
-      
-      // Rank
+
       const rankColor = index === 0 ? '#FFD700' : index === 1 ? '#C0C0C0' : index === 2 ? '#CD7F32' : '#FFFFFF';
-      const rank = this.add.text(width / 2 - 350, y, `${index + 1}`, {
+      const rank = this.add.text(width / 2 - 380, y, `${index + 1}`, {
         fontSize: '18px',
         fontFamily: 'Press Start 2P',
         color: rankColor,
       });
       rank.setOrigin(0.5);
       this.entryContainer.add(rank);
-      
-      // Player name
-      const player = this.add.text(width / 2 - 150, y, entry.player, {
-        fontSize: '16px',
+
+      const player = this.add.text(width / 2 - 180, y, entry.player || 'Commander', {
+        fontSize: '14px',
         fontFamily: 'Press Start 2P',
         color: '#FFFFFF',
       });
       player.setOrigin(0.5);
       this.entryContainer.add(player);
-      
-      // Time
-      const timeText = entry.time > 0 ? this.formatTime(entry.time) : '---';
-      const time = this.add.text(width / 2 + 150, y, timeText, {
+
+      const scoreText = entry.score > 0 ? `${entry.score}` : '---';
+      const score = this.add.text(width / 2 + 20, y, scoreText, {
         fontSize: '16px',
         fontFamily: 'Press Start 2P',
-        color: '#00FF00',
+        color: '#FFD700',
       });
-      time.setOrigin(0.5);
-      this.entryContainer.add(time);
-      
-      // Date
-      const date = this.add.text(width / 2 + 350, y, entry.date, {
-        fontSize: '14px',
+      score.setOrigin(0.5);
+      this.entryContainer.add(score);
+
+      const killsText = entry.kills !== undefined ? `${entry.kills}` : '---';
+      const kills = this.add.text(width / 2 + 180, y, killsText, {
+        fontSize: '16px',
+        fontFamily: 'Press Start 2P',
+        color: '#FF5252',
+      });
+      kills.setOrigin(0.5);
+      this.entryContainer.add(kills);
+
+      const date = this.add.text(width / 2 + 360, y, entry.date || '---', {
+        fontSize: '12px',
         fontFamily: 'Arial',
         color: '#CCCCCC',
       });

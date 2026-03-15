@@ -116,4 +116,15 @@ function syncVolume() {
   }
 }
 
-export const MusicManager = { play, stop, pause, resume, setVolume, syncVolume, tryUnlock };
+// Modulate music volume based on battle intensity (0-1)
+// At intensity 0: base volume; at intensity 1: base + 30% boost
+function applyBattleIntensity(intensity) {
+  if (!currentAudio) return;
+  const base = getVolume();
+  if (base === 0) return;
+  const boost = intensity * 0.3;
+  const targetVol = Math.min(1, base + boost);
+  currentAudio.volume = targetVol;
+}
+
+export const MusicManager = { play, stop, pause, resume, setVolume, syncVolume, tryUnlock, applyBattleIntensity };

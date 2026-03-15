@@ -201,7 +201,58 @@ export class Base extends Phaser.GameObjects.Container {
   
   die() {
     this.isDead = true;
-    
+
+    // Destruction cinematic: heavy screen shake + explosion effect
+    if (this.scene.cameras && this.scene.cameras.main) {
+      this.scene.cameras.main.shake(600, 0.025);
+    }
+
+    // Big explosion flash
+    const flash = this.scene.add.rectangle(this.x, this.y, 200, 200, 0xFFFFFF, 0.9);
+    flash.setDepth(500);
+    this.scene.tweens.add({
+      targets: flash,
+      alpha: 0,
+      scaleX: 4,
+      scaleY: 4,
+      duration: 600,
+      ease: 'Power2',
+      onComplete: () => flash.destroy(),
+    });
+
+    // Spawn debris particles
+    for (let i = 0; i < 10; i++) {
+      const debris = this.scene.add.rectangle(
+        this.x + Phaser.Math.Between(-40, 40),
+        this.y + Phaser.Math.Between(-40, 40),
+        Phaser.Math.Between(6, 18),
+        Phaser.Math.Between(6, 18),
+        this.isEnemy ? 0x39FF14 : 0xC0A040,
+        0.85
+      );
+      debris.setDepth(499);
+      this.scene.tweens.add({
+        targets: debris,
+        x: debris.x + Phaser.Math.Between(-150, 150),
+        y: debris.y + Phaser.Math.Between(-100, 80),
+        alpha: 0,
+        angle: Phaser.Math.Between(-360, 360),
+        duration: Phaser.Math.Between(500, 1000),
+        ease: 'Power2',
+        onComplete: () => debris.destroy(),
+      });
+    }
+
+    // Fade out the castle itself
+    this.scene.tweens.add({
+      targets: this.castle,
+      alpha: 0,
+      scaleX: this.castle.scaleX * 1.3,
+      scaleY: this.castle.scaleY * 1.3,
+      duration: 500,
+      ease: 'Power2',
+    });
+
     // Game over!
     // If enemy base dies -> player wins (true)
     // If player base dies -> player loses (false)

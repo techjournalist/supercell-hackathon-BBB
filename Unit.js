@@ -144,9 +144,28 @@ export class Unit extends Phaser.GameObjects.Container {
     }
   }
   
+  applyAuraEffects() {
+    const friendlies = this.isEnemy ? this.scene.enemyUnits : this.scene.playerUnits;
+    let bestBonus = 0;
+
+    friendlies.forEach(unit => {
+      if (unit === this || unit.isDead || !unit.config.auraRadius) return;
+      const dist = Phaser.Math.Distance.Between(this.x, this.y, unit.x, unit.y);
+      if (dist <= unit.config.auraRadius) {
+        bestBonus = Math.max(bestBonus, unit.config.auraBonus || 0);
+      }
+    });
+
+    this.auraBoostActive = bestBonus > 0;
+    this.auraBoostAmount = bestBonus;
+  }
+
   update(time, delta) {
     if (this.isDead) return;
-    
+
+    // Apply aura bonuses every frame (cheap since we check nearby units)
+    this.applyAuraEffects();
+
     // Check for targets
     const enemies = this.isEnemy ? this.scene.playerUnits : this.scene.enemyUnits;
     const enemyBase = this.isEnemy ? this.scene.playerBase : this.scene.enemyBase;
@@ -200,7 +219,17 @@ export class Unit extends Phaser.GameObjects.Container {
       else if (this.isEnemy && this.isAIScout) {
         this.aiScoutBehavior(time, delta);
       } 
-      else {
+      else if (!this.isEnemy && this._rallyTarget) {
+        // Move toward rally point first before engaging
+        const dx = this._rallyTarget.x - this.x;
+        const dist = Math.abs(dx);
+        if (dist > 80) {
+          const dir = Math.sign(dx);
+          this.x += dir * this.speed * (delta / 1000);
+        } else {
+          this._rallyTarget = null;
+        }
+      } else {
         // Move toward enemy side
         // Player units (from LEFT base x=100) move RIGHT: direction = +1 (velocity is POSITIVE)
         // Enemy units (from RIGHT base x=5700) move LEFT: direction = -1 (velocity is NEGATIVE)
@@ -523,40 +552,77 @@ export class Unit extends Phaser.GameObjects.Container {
     }
   }
   
+  getEffectiveDamage() {
+    let dmg = this.damage;
+
+    // Berserker rage: +damage when below threshold HP
+    if (this.config.berserkerThreshold && this.health / this.maxHealth < this.config.berserkerThreshold) {
+      dmg = Math.floor(dmg * (1 + (this.config.berserkerBonus || 0.25)));
+      if (!this.berserkerVisual) {
+        this.berserkerVisual = this.scene.add.circle(0, 0, 28, 0xFF3300, 0.25);
+        this.add(this.berserkerVisual);
+        this.scene.tweens.add({
+          targets: this.berserkerVisual,
+          alpha: 0.45,
+          scale: 1.15,
+          duration: 350,
+          yoyo: true,
+          repeat: -1,
+        });
+      }
+    } else if (this.berserkerVisual) {
+      this.berserkerVisual.destroy();
+      this.berserkerVisual = null;
+    }
+
+    // Aura damage bonus from nearby friendly heavy units
+    if (this.auraBoostActive) {
+      dmg = Math.floor(dmg * (1 + (this.auraBoostAmount || 0)));
+    }
+
+    return dmg;
+  }
+
+  calculateRangedDamage(baseDamage, distance) {
+    const falloff = this.config.rangedDamageFalloff;
+    if (!falloff || this.attackRange <= 100) return baseDamage;
+
+    const pct = Math.min(1, distance / this.attackRange);
+    const rangeFalloff = 1 - (1 - falloff) * pct;
+    return Math.max(1, Math.floor(baseDamage * rangeFalloff));
+  }
+
   attack() {
     if (!this.target || this.target.isDead || this.isAttacking) return;
-    
+
     this.isAttacking = true;
-    
-    // Attack swing animation
+
     const originalScaleX = this.sprite.scaleX;
     const originalScaleY = this.sprite.scaleY;
     const swingDirection = this.isEnemy ? -1 : 1;
-    
+
+    const distToTarget = this.target.x !== undefined
+      ? Phaser.Math.Distance.Between(this.x, this.y, this.target.x, this.target.y)
+      : 0;
+
     this.scene.tweens.add({
       targets: this.sprite,
-      scaleX: originalScaleX * 1.3,  // Maintains sign (positive or negative)
+      scaleX: originalScaleX * 1.3,
       scaleY: originalScaleY * 1.2,
       x: this.sprite.x + (swingDirection * 10),
       duration: 150,
       yoyo: true,
+      onYoyo: () => {
+        if (this.target && !this.target.isDead) {
+          const base = this.getEffectiveDamage();
+          const final = this.calculateRangedDamage(base, distToTarget);
+          this.target.takeDamage(final, this.x, this.y);
+          this.playAttackSound();
+        }
+      },
       onComplete: () => {
         this.sprite.x = 0;
         this.isAttacking = false;
-        
-        // Deal damage at peak of animation
-        if (this.target && !this.target.isDead) {
-          this.target.takeDamage(this.damage, this.x, this.y);
-        }
-      },
-      onYoyo: () => {
-        // Deal damage on the forward swing
-        if (this.target && !this.target.isDead) {
-          this.target.takeDamage(this.damage, this.x, this.y);
-          
-          // Play attack sound effect with positional audio
-          this.playAttackSound();
-        }
       }
     });
   }
@@ -578,13 +644,18 @@ export class Unit extends Phaser.GameObjects.Container {
   
   takeDamage(amount, fromX, fromY) {
     if (this.isDead) return;
-    
-    // Apply shield damage reduction if active
+
     let finalDamage = amount;
+
+    // Apply existing damage reduction (shield, frost shield)
     if (this.shieldActive) {
-      finalDamage = amount * 0.5;  // 50% damage reduction
+      finalDamage *= 0.5;
     }
-    
+    if (this.damageReduction) {
+      finalDamage *= (1 - this.damageReduction);
+    }
+    finalDamage = Math.max(1, finalDamage);
+
     this.health -= finalDamage;
     
     // Update health bar with smooth animation
@@ -650,20 +721,38 @@ export class Unit extends Phaser.GameObjects.Container {
   die() {
     if (this.isDead) return;
     this.isDead = true;
-    
+
+    // Clean up berserker visual
+    if (this.berserkerVisual) {
+      this.berserkerVisual.destroy();
+      this.berserkerVisual = null;
+    }
+
     // Remove from unit arrays immediately to prevent filtering every frame
     if (!this.isEnemy) {
       const index = this.scene.playerUnits.indexOf(this);
       if (index > -1) {
         this.scene.playerUnits.splice(index, 1);
       }
+      // Track player loss
+      if (this.scene.stats) this.scene.stats.unitsLost = (this.scene.stats.unitsLost || 0) + 1;
     } else {
       const index = this.scene.enemyUnits.indexOf(this);
       if (index > -1) {
         this.scene.enemyUnits.splice(index, 1);
       }
+      // Track enemy kill
+      if (this.scene.stats) this.scene.stats.enemiesKilled = (this.scene.stats.enemiesKilled || 0) + 1;
+      // Notify kill feed
+      if (this.scene.addKillFeedEntry) {
+        this.scene.addKillFeedEntry(this.config.name, true);
+      }
+      // Small screen shake on kill
+      if (this.scene.cameras && this.scene.cameras.main) {
+        this.scene.cameras.main.shake(80, 0.003);
+      }
     }
-    
+
     // Faction-specific death animations
     this.playDeathAnimation();
   }

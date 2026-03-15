@@ -4,16 +4,16 @@ export const CONFIG = {
   WORLD_WIDTH: 6000,
   PLAYER_BASE_X: 100,
   ENEMY_BASE_X: 5700,
-  
+
   // Camera settings
   CAMERA_WIDTH: 1500,
   CAMERA_SCROLL_SPEED: 400,  // pixels per second
   CAMERA_EDGE_ZONE: 50,      // pixels from edge to start scrolling
-  
+
   // Base settings
   BASE_MAX_HEALTH: 100,
   BASE_Y_OFFSET: 120,  // How high above ground bases float
-  
+
   // Unit stats
   UNITS: {
     worker: {
@@ -28,47 +28,50 @@ export const CONFIG = {
     },
     legionary: {
       name: 'Legionary',
-      health: 80,
-      damage: 12,
+      health: 90,
+      damage: 13,
       attackRange: 100,
       attackSpeed: 1000,
       speed: 70,
-      cost: 75,
-      cooldown: 4000,  // 4 second training time
+      cost: 70,
+      cooldown: 3500,
     },
     pilum: {
       name: 'Pilum Thrower',
-      health: 45,
-      damage: 18,
+      health: 65,         // was 45 - increased survivability
+      damage: 16,         // was 18 - slightly reduced, balanced by range
       attackRange: 280,
       attackSpeed: 1500,
-      speed: 85,
+      speed: 80,
       cost: 100,
-      cooldown: 5000,  // 5 second training time
+      cooldown: 5000,
+      rangedDamageFalloff: 0.7,  // 30% damage reduction at max range
     },
     centurion: {
       name: 'Centurion',
-      health: 200,
-      damage: 25,
+      health: 220,
+      damage: 27,
       attackRange: 110,
-      attackSpeed: 1200,
-      speed: 50,  // Slower movement
+      attackSpeed: 1100,  // slightly faster - was 1200
+      speed: 52,
       cost: 200,
-      cooldown: 8000,  // 8 second training time
+      cooldown: 7000,     // was 8000 - more viable
+      auraRadius: 150,    // buffs nearby allies
+      auraBonus: 0.1,     // +10% damage to allies in range
     },
     scout: {
       name: 'Scout',
-      health: 50,
-      damage: 5,
+      health: 55,
+      damage: 6,
       attackRange: 80,
-      attackSpeed: 1000,
-      speed: 120,  // Very fast movement
+      attackSpeed: 900,
+      speed: 125,
       cost: 60,
-      cooldown: 3000,  // 3 second training time
-      visionMultiplier: 1.6,  // 60% increased vision
+      cooldown: 3000,
+      visionMultiplier: 1.6,
     }
   },
-  
+
   // Alien units (AI opponent faction)
   ALIEN_UNITS: {
     harvester: {
@@ -84,270 +87,308 @@ export const CONFIG = {
     scout: {
       name: 'Scout',
       health: 45,
-      damage: 3,
+      damage: 4,
       attackRange: 70,
       attackSpeed: 900,
-      speed: 130,  // Very fast movement
+      speed: 130,
       cost: 55,
       cooldown: 3000,
-      visionMultiplier: 1.7,  // 70% increased vision
+      visionMultiplier: 1.7,
     },
     drone: {
       name: 'Drone',
-      health: 40,
-      damage: 8,
+      health: 50,         // was 40 - buffed so legionary matchup is even
+      damage: 9,          // was 8 - slight increase
       attackRange: 90,
-      attackSpeed: 800,
-      speed: 95,  // Fast
-      cost: 40,
-      cooldown: 2500,
+      attackSpeed: 850,
+      speed: 90,          // was 95 - slight slowdown
+      cost: 55,           // was 40 - cost adjusted to be fair vs Legionary
+      cooldown: 3000,     // was 2500 - slowed to match cost
     },
     blaster: {
       name: 'Blaster',
-      health: 50,
-      damage: 20,
+      health: 60,         // was 50 - more resilient
+      damage: 18,         // was 20 - slight reduction
       attackRange: 300,
       attackSpeed: 1800,
-      speed: 75,
+      speed: 72,
       cost: 100,
       cooldown: 5000,
+      rangedDamageFalloff: 0.7,  // 30% damage reduction at max range
     },
     overlord: {
       name: 'Overlord',
-      health: 180,
+      health: 200,        // was 180 - stronger tank
       damage: 30,
       attackRange: 120,
-      attackSpeed: 1300,
-      speed: 45,  // Slow
+      attackSpeed: 1200,
+      speed: 48,
       cost: 225,
-      cooldown: 9000,
+      cooldown: 8500,     // was 9000 - slightly more viable
+      auraRadius: 130,
+      auraBonus: 0.08,    // +8% damage to nearby alien units
     }
   },
-  
+
   // Viking units (third playable faction)
   VIKING_UNITS: {
     thrall: {
       name: 'Thrall',
-      health: 25,
+      health: 28,
       damage: 0,
       attackRange: 0,
       attackSpeed: 0,
       speed: 70,
       cost: 45,
-      cooldown: 3000,
+      cooldown: 2500,
     },
     berserker: {
       name: 'Berserker',
-      health: 70,
-      damage: 14,
+      health: 75,
+      damage: 15,
       attackRange: 100,
-      attackSpeed: 900,
-      speed: 100,  // Fast
+      attackSpeed: 850,   // was 900 - slightly faster attack
+      speed: 105,
       cost: 65,
       cooldown: 3500,
+      berserkerThreshold: 0.5,  // below 50% HP: +25% damage bonus
+      berserkerBonus: 0.25,
     },
     axeThrower: {
       name: 'Axe Thrower',
-      health: 40,
-      damage: 16,
+      health: 52,         // was 40 - more robust
+      damage: 15,         // was 16 - balanced
       attackRange: 280,
       attackSpeed: 1600,
-      speed: 80,
+      speed: 78,
       cost: 95,
       cooldown: 5000,
+      rangedDamageFalloff: 0.72,
     },
     jarl: {
       name: 'Jarl',
-      health: 190,
-      damage: 28,
+      health: 210,        // was 190 - slightly tankier
+      damage: 30,         // was 28 - slightly stronger
       attackRange: 115,
-      attackSpeed: 1400,
-      speed: 50,  // Slow
+      attackSpeed: 1300,  // was 1400 - faster
+      speed: 52,
       cost: 210,
-      cooldown: 8000,
+      cooldown: 7500,     // was 8000 - more viable
+      auraRadius: 150,
+      auraBonus: 0.12,    // +12% damage to nearby viking units
     }
   },
-  
+
   // Resources
-  STARTING_GOLD: 100,
-  STARTING_MANA: 50,
+  STARTING_GOLD: 120,     // was 100 - slightly more initial gold
+  STARTING_MANA: 20,      // was 50 - reduced; mana now trickles in passively
   MAX_MANA: 200,
-  
+  PASSIVE_MANA_REGEN: 0.5, // mana per second all factions get passively
+
   // Mana structures
   AQUEDUCT_COST: 100,
-  AQUEDUCT_MANA_RATE: 2,  // mana per second
+  AQUEDUCT_MANA_RATE: 2.5,  // was 2 - slightly improved
   AQUEDUCT_UPGRADE_COST: 150,
-  AQUEDUCT_UPGRADED_RATE: 4,  // mana per second when upgraded
-  
+  AQUEDUCT_UPGRADED_RATE: 5,  // was 4 - improved to justify upgrade cost
+
   // Probe Beam (Alien mana ability)
-  PROBE_BEAM_COOLDOWN: 5000,  // 5 seconds
-  
+  PROBE_BEAM_COOLDOWN: 4000,  // was 5000 - more responsive
+
   // Viking mana system (Odin's Blessing)
   ODINS_BLESSING_COST: 100,
-  ODINS_BLESSING_MANA_RATE: 3,  // mana per second
+  ODINS_BLESSING_MANA_RATE: 3,
   ODINS_BLESSING_UPGRADE_COST: 150,
-  ODINS_BLESSING_UPGRADED_RATE: 5,  // mana per second when upgraded
-  
+  ODINS_BLESSING_UPGRADED_RATE: 5.5,  // was 5 - slight improvement
+
   // Roman Spells
   SHIELD_WALL: {
     cost: 30,
     cooldown: 12000,
-    duration: 5000,
+    duration: 6000,       // was 5000 - longer shield
     damageReduction: 0.5,
     radius: 200,
   },
   RAIN_OF_PILA: {
     cost: 50,
-    cooldown: 15000,
+    cooldown: 14000,      // was 15000 - slightly faster
     duration: 3000,
-    damage: 40,
-    radius: 150,
+    damage: 45,           // was 40 - slightly more punch
+    radius: 160,          // was 150 - wider
   },
   HEALING_SPRING: {
     cost: 40,
-    cooldown: 18000,
-    duration: 4000,
-    healAmount: 60,
+    cooldown: 16000,      // was 18000 - slightly faster
+    duration: 5000,       // was 4000 - longer healing
+    healAmount: 75,       // was 60 - more impactful
     radius: 180,
   },
-  
+
   // Alien Spells
   MIND_CONTROL: {
     cost: 60,
     cooldown: 20000,
-    duration: 8000,
-    range: 300,
+    duration: 10000,      // was 8000 - longer control window
+    range: 350,           // was 300 - slightly longer range
   },
   PLASMA_BOMB: {
     cost: 45,
-    cooldown: 14000,
-    damage: 50,
-    radius: 120,
+    cooldown: 13000,      // was 14000 - slightly faster
+    damage: 55,           // was 50 - more impactful
+    radius: 130,          // was 120 - wider
   },
-  
+
   // Viking Spells
   THORS_LIGHTNING: {
     cost: 40,
-    cooldown: 14000,
-    damage: 55,
+    cooldown: 13000,      // was 14000
+    damage: 60,           // was 55 - more impactful
     range: 400,
+    chainCount: 3,        // NEW: chain up to 3 targets
+    chainRange: 250,      // NEW: chain lightning jumps within this range
+    chainDamageMult: 0.6, // NEW: each chain does 60% of previous
   },
   BATTLE_RAGE: {
     cost: 35,
-    cooldown: 12000,
-    duration: 5000,
-    attackSpeedBonus: 0.4,  // +40% attack speed
-    radius: 180,
+    cooldown: 11000,      // was 12000 - slightly faster
+    duration: 6000,       // was 5000 - longer rage
+    attackSpeedBonus: 0.45,  // was 0.4 - slightly stronger
+    radius: 190,          // was 180 - wider
   },
   FROST_SHIELD: {
     cost: 30,
-    cooldown: 16000,
-    duration: 3000,
-    radius: 150,
+    cooldown: 15000,      // was 16000
+    duration: 4000,       // was 3000 - longer protection
+    radius: 160,          // was 150 - wider
+    slowAmount: 0.4,      // NEW: also slows attackers by 40%
   },
-  
+
   // Upgrades
   ROMAN_UPGRADES: {
     armor: {
       name: 'Armor Upgrade',
       cost: 200,
-      hpBonus: 0.2,  // +20% HP
+      hpBonus: 0.25,      // was 0.2 - slightly stronger
     },
     weapon: {
       name: 'Weapon Upgrade',
       cost: 200,
-      damageBonus: 0.2,  // +20% attack
+      damageBonus: 0.25,  // was 0.2 - slightly stronger
     },
   },
-  
+
   ALIEN_UPGRADES: {
     cloningVats: {
       name: 'Cloning Vats',
-      cost: 150,
-      cooldownReduction: 0.25,  // -25% train times
+      cost: 200,          // was 150 - raised to balance power level
+      cooldownReduction: 0.15,  // was 0.25 - reduced to 15% (still strong but not broken)
     },
     plasmaInfusion: {
       name: 'Plasma Infusion',
       cost: 200,
-      damageBonus: 0.2,  // +20% attack
+      damageBonus: 0.2,
     },
     exoskeleton: {
       name: 'Exoskeleton',
       cost: 200,
-      hpBonus: 0.2,  // +20% HP
+      hpBonus: 0.25,      // was 0.2 - slightly stronger
     },
     warpDrive: {
       name: 'Warp Drive',
       cost: 175,
-      speedBonus: 0.15,  // +15% speed
+      speedBonus: 0.18,   // was 0.15 - slightly stronger
     },
   },
-  
+
   VIKING_UPGRADES: {
     ironForging: {
       name: 'Iron Forging',
       cost: 200,
-      damageBonus: 0.2,  // +20% attack
+      damageBonus: 0.25,  // was 0.2
     },
     shieldWallTraining: {
       name: 'Shield Wall Training',
       cost: 200,
-      hpBonus: 0.2,  // +20% HP
+      hpBonus: 0.25,      // was 0.2
     },
     meadHall: {
       name: 'Mead Hall',
       cost: 175,
-      speedBonus: 0.15,  // +15% speed
+      speedBonus: 0.18,   // was 0.15
     },
   },
-  
+
   // Mining
-  MINE_OFFSET_FROM_BASE: 300,  // Distance from base to gold mine
-  MINING_TIME: 3000,           // Time to collect gold (ms)
-  GOLD_PER_TRIP: 30,           // Gold collected per mining trip
-  WORKER_FLEE_DISTANCE: 200,   // How close enemies must be to trigger flee
-  
+  MINE_OFFSET_FROM_BASE: 300,
+  MINING_TIME: 3000,
+  GOLD_PER_TRIP: 30,
+  WORKER_FLEE_DISTANCE: 220,    // was 200 - flee a bit earlier
+
+  // Rally Point
+  RALLY_POINT_ENABLED: true,
+
+  // Defense Structures
+  DEFENSE_TOWER: {
+    cost: 150,
+    health: 300,
+    damage: 12,
+    attackRange: 280,
+    attackSpeed: 1200,
+    name: 'Defense Tower',
+  },
+
+  // Kill Feed
+  KILL_FEED_MAX: 5,
+  KILL_FEED_DURATION: 4000,
+
   // AI settings
-  AI_SPAWN_INTERVAL: 4000,  // ms between AI spawn attempts
-  AI_SPAWN_CHANCE: 0.7,     // 70% chance to spawn when able
-  AI_WORKER_PRIORITY: 0.4,  // 40% chance to spawn worker if affordable
-  AI_MIN_WORKERS: 2,        // AI maintains at least this many workers
-  AI_PROBE_BEAM_INTERVAL: 6000,  // ms between AI probe beam checks
-  AI_PROBE_BEAM_HP_THRESHOLD: 20,  // Sacrifice units below this HP
-  AI_SPELL_CHECK_INTERVAL: 5000,  // ms between AI spell casting checks
-  AI_MIND_CONTROL_MIN_COST: 100,  // Only mind control units worth this much gold or more
-  AI_PLASMA_BOMB_MIN_CLUSTER: 3,  // Minimum units in cluster to cast plasma bomb
-  AI_UPGRADE_CHECK_INTERVAL: 8000,  // ms between AI upgrade checks
-  AI_UPGRADE_GOLD_THRESHOLD: 400,  // Only buy upgrades when gold above this
-  AI_SCOUT_INTERVAL: 15000,  // ms between AI scout spawn attempts
-  AI_SCOUT_CHANCE: 0.6,  // 60% chance to spawn scout when able
-  AI_SCOUT_MAX: 2,  // Maximum number of active AI scouts at once
-  
+  AI_SPAWN_INTERVAL: 3800,      // was 4000 - slightly faster
+  AI_SPAWN_CHANCE: 0.72,        // was 0.70 - slightly more aggressive
+  AI_WORKER_PRIORITY: 0.35,     // was 0.4 - slightly less worker-focused
+  AI_MIN_WORKERS: 2,
+  AI_PROBE_BEAM_INTERVAL: 5500,
+  AI_PROBE_BEAM_HP_THRESHOLD: 22,
+  AI_SPELL_CHECK_INTERVAL: 4500, // was 5000 - more frequent spell checks
+  AI_MIND_CONTROL_MIN_COST: 90,  // was 100 - will target cheaper units too
+  AI_PLASMA_BOMB_MIN_CLUSTER: 3,
+  AI_UPGRADE_CHECK_INTERVAL: 7000, // was 8000 - more frequent upgrade checks
+  AI_UPGRADE_GOLD_THRESHOLD: 350,  // was 400 - buy upgrades earlier
+  AI_SCOUT_INTERVAL: 12000,     // was 15000 - more frequent scouting
+  AI_SCOUT_CHANCE: 0.65,
+  AI_SCOUT_MAX: 2,
+  AI_THREAT_HP_THRESHOLD: 0.45, // Base HP % below which AI switches to emergency defense
+
   // Initial spawns
   INITIAL_PLAYER_LEGIONARIES: 1,
   INITIAL_PLAYER_WORKERS: 1,
   INITIAL_ALIEN_DRONES: 1,
   INITIAL_ALIEN_HARVESTERS: 1,
-  
+
   // Colors
   COLORS: {
-    playerHealth: 0x4CAF50,  // Green HP bars
-    enemyHealth: 0x9C27B0,   // Purple for aliens
+    playerHealth: 0x4CAF50,
+    enemyHealth: 0xE53935,       // was purple - now red for enemies
     healthBarBg: 0x222222,
     gold: 0xFFD700,
-    mana: 0x00FFFF,  // Cyan crystal
-    buttonBg: 0x8B4513,  // Roman brown/bronze
+    mana: 0x00BFFF,              // was 00FFFF - deeper blue
+    buttonBg: 0x8B4513,
     buttonBgHover: 0xA0522D,
     buttonBgDisabled: 0x555555,
-    cooldownOverlay: 0x000000,  // Black overlay for cooldown
-    probeBeam: 0x00FF00,  // Green tractor beam
-    shieldGold: 0xFFD700,  // Golden shield
-    healingBlue: 0x00CED1,  // Blue-green healing
-    spellButton: 0x8B0000,  // Dark red for spell buttons
-    mindControl: 0x00FF00,  // Green mind control
-    plasmaBomb: 0x39FF14,  // Bright green plasma
+    cooldownOverlay: 0x000000,
+    probeBeam: 0x00FF00,
+    shieldGold: 0xFFD700,
+    healingBlue: 0x00CED1,
+    spellButton: 0x8B0000,
+    mindControl: 0x00FF00,
+    plasmaBomb: 0x39FF14,
+    rallyCross: 0x00FF88,        // Rally point marker color
+    defenseTower: 0x607D8B,      // Defense tower color
+    killFeedPlayer: 0x4CAF50,
+    killFeedEnemy: 0xFF5252,
+    berserkerRage: 0xFF3300,     // Color for berserk visual
+    chainLightning: 0xFFFF44,    // Chain lightning color
+    frostSlow: 0x88DDFF,         // Frost slow indicator
   },
-  
+
   // Safe area margins (percentage)
   SAFE_AREA: {
     top: 0.05,

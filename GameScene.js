@@ -17,6 +17,7 @@ import { AchievementManager } from './AchievementManager.js';
 import { AudioManager } from './AudioManager.js';
 import { soundEffects } from './SoundEffectsManager.js';
 import { MusicManager } from './MusicManager.js';
+import { saveGameSession, submitLeaderboardEntry, updatePlayerStats, saveCampaignProgress } from './supabase.js';
 
 export class GameScene extends Phaser.Scene {
   constructor() {
@@ -224,6 +225,9 @@ export class GameScene extends Phaser.Scene {
     // Create UI (fixed to camera)
     this.createUI();
     
+    // Create kill feed
+    this.createKillFeed();
+
     // Create minimap
     this.createMinimap();
     
@@ -355,22 +359,72 @@ export class GameScene extends Phaser.Scene {
     // Mouse edge scrolling
     this.input.on('pointermove', (pointer) => {
       if (this.isGameOver) return;
-      
+
       const screenWidth = this.scale.width;
-      
-      // Check if near left edge
+
       if (pointer.x < CONFIG.CAMERA_EDGE_ZONE) {
         this.cameraScrolling.left = true;
       } else {
         this.cameraScrolling.left = false;
       }
-      
-      // Check if near right edge
+
       if (pointer.x > screenWidth - CONFIG.CAMERA_EDGE_ZONE) {
         this.cameraScrolling.right = true;
       } else {
         this.cameraScrolling.right = false;
       }
+    });
+
+    // Right-click sets rally point
+    this.input.on('pointerdown', (pointer) => {
+      if (this.isGameOver || pointer.rightButtonDown === undefined) return;
+      if (!pointer.rightButtonDown()) return;
+      if (pointer.y < 70) return; // Don't set rally in UI area
+
+      const worldX = pointer.x + this.cameras.main.scrollX;
+      const worldY = pointer.y;
+      this.setRallyPoint(worldX, worldY);
+    });
+  }
+
+  setRallyPoint(x, y) {
+    this.rallyPoint = { x, y };
+
+    // Remove old marker
+    if (this._rallyMarker) {
+      this._rallyMarker.destroy();
+      this._rallyMarkerText && this._rallyMarkerText.destroy();
+    }
+
+    // Draw a pulsing flag marker at the rally point
+    const marker = this.add.graphics();
+    marker.lineStyle(3, CONFIG.COLORS.rallyCross, 1);
+    marker.strokeCircle(0, 0, 16);
+    marker.lineBetween(-20, 0, 20, 0);
+    marker.lineBetween(0, -20, 0, 20);
+    marker.setPosition(x, y - 30);
+    marker.setDepth(50);
+
+    const label = this.add.text(x, y - 55, 'RALLY', {
+      fontSize: '10px',
+      fontFamily: 'Press Start 2P',
+      color: '#00FF88',
+      stroke: '#000000',
+      strokeThickness: 3,
+    });
+    label.setOrigin(0.5);
+    label.setDepth(51);
+
+    this._rallyMarker = marker;
+    this._rallyMarkerText = label;
+
+    // Pulse in then settle
+    this.tweens.add({
+      targets: [marker, label],
+      alpha: { from: 1, to: 0.7 },
+      scale: { from: 1.3, to: 1 },
+      duration: 400,
+      ease: 'Back.easeOut',
     });
   }
   
@@ -417,17 +471,8 @@ export class GameScene extends Phaser.Scene {
           const cost = this.getSpellCost(spellKey);
           
           if (cooldown <= 0 && this.mana >= cost) {
-            // Activate spell targeting mode
-            this.activeSpell = spellKey;
-            this.input.once('pointerdown', (pointer) => {
-              if (this.isGameOver) return;
-              
-              const worldX = pointer.worldX;
-              const worldY = pointer.worldY;
-              
-              this.castSpell(spellKey, worldX, worldY);
-              this.activeSpell = null;
-            });
+            // Use unified selectSpell to avoid listener leaks
+            this.selectSpell(spellKey);
             
             // Visual feedback - flash the button
             this.tweens.add({
@@ -574,6 +619,19 @@ export class GameScene extends Phaser.Scene {
     this.goldText.setOrigin(0, 0.5);
     this.goldText.setScrollFactor(0);
     this.goldText.setDepth(101);
+
+    // Income per second display
+    this._incomeText = this.add.text(currentX + 35, centerY + 16, '+0/s', {
+      fontSize: '10px',
+      fontFamily: 'Arial, sans-serif',
+      color: '#a0d070',
+      stroke: '#000000',
+      strokeThickness: 2,
+    });
+    this._incomeText.setOrigin(0, 0.5);
+    this._incomeText.setScrollFactor(0);
+    this._incomeText.setDepth(101);
+
     currentX += 100;
     
     // MANA DISPLAY - responsive size with glow
@@ -777,6 +835,62 @@ export class GameScene extends Phaser.Scene {
     this.playerBaseShieldIcon.setVisible(false);
   }
   
+  createKillFeed() {
+    const { width } = this.scale;
+    this._killFeedEntries = [];
+    this._killFeedContainer = this.add.container(width - 10, 80);
+    this._killFeedContainer.setScrollFactor(0);
+    this._killFeedContainer.setDepth(900);
+  }
+
+  addKillFeedEntry(unitName, isEnemyKill) {
+    if (!this._killFeedContainer) this.createKillFeed();
+
+    const color = isEnemyKill ? '#FF5252' : '#4CAF50';
+    const symbol = isEnemyKill ? '✗' : '✓';
+    const text = this.add.text(0, 0, `${symbol} ${unitName}`, {
+      fontSize: '11px',
+      fontFamily: 'Press Start 2P',
+      color,
+      stroke: '#000000',
+      strokeThickness: 3,
+      align: 'right',
+    });
+    text.setOrigin(1, 0);
+    this._killFeedContainer.add(text);
+    this._killFeedEntries.push(text);
+
+    // Reposition all entries
+    this._killFeedEntries.forEach((entry, i) => {
+      entry.y = i * 20;
+    });
+
+    // Cap at max entries
+    while (this._killFeedEntries.length > CONFIG.KILL_FEED_MAX) {
+      const old = this._killFeedEntries.shift();
+      old.destroy();
+      this._killFeedEntries.forEach((entry, i) => {
+        entry.y = i * 20;
+      });
+    }
+
+    // Fade out after duration
+    this.time.delayedCall(CONFIG.KILL_FEED_DURATION, () => {
+      if (!text || !text.active) return;
+      this.tweens.add({
+        targets: text,
+        alpha: 0,
+        duration: 500,
+        onComplete: () => {
+          const idx = this._killFeedEntries.indexOf(text);
+          if (idx > -1) this._killFeedEntries.splice(idx, 1);
+          text.destroy();
+          this._killFeedEntries.forEach((entry, i) => { entry.y = i * 20; });
+        }
+      });
+    });
+  }
+
   createMinimap() {
     const { width, height } = this.scale;
     const minimapHeight = 30;
@@ -2908,52 +3022,76 @@ export class GameScene extends Phaser.Scene {
   }
   
   selectSpell(spellName) {
-    // Check if we can cast the spell
-    let spellConfig;
-    if (spellName === 'shieldWall') {
-      spellConfig = CONFIG.SHIELD_WALL;
-    } else if (spellName === 'rainOfPila') {
-      spellConfig = CONFIG.RAIN_OF_PILA;
-    } else if (spellName === 'healingSpring') {
-      spellConfig = CONFIG.HEALING_SPRING;
-    }
-    
+    const spellConfigMap = {
+      shieldWall: CONFIG.SHIELD_WALL,
+      rainOfPila: CONFIG.RAIN_OF_PILA,
+      healingSpring: CONFIG.HEALING_SPRING,
+      thorLightning: CONFIG.THORS_LIGHTNING,
+      battleRage: CONFIG.BATTLE_RAGE,
+      frostShield: CONFIG.FROST_SHIELD,
+      mindControl: CONFIG.MIND_CONTROL,
+      plasmaBomb: CONFIG.PLASMA_BOMB,
+    };
+
+    const spellConfig = spellConfigMap[spellName];
     if (!spellConfig) return;
     if (this.mana < spellConfig.cost) return;
     if (this.spellCooldowns[spellName] > 0) return;
-    
-    // Set active spell
-    this.activeSpell = spellName;
-    
-    // Highlight the selected button (if it exists)
-    if (spellName === 'shieldWall' && this.shieldButton) {
-      this.shieldButton.setFillStyle(0xFF0000);
-    } else if (spellName === 'rainOfPila' && this.rainButton) {
-      this.rainButton.setFillStyle(0xFF0000);
-    } else if (spellName === 'healingSpring' && this.healButton) {
-      this.healButton.setFillStyle(0xFF0000);
+
+    // Cancel any existing pending spell targeting listener to prevent leak
+    if (this._pendingSpellListener) {
+      this.input.off('pointerdown', this._pendingSpellListener);
+      this._pendingSpellListener = null;
+      this._cancelCurrentSpellHighlight();
     }
-    
-    // Wait for battlefield click
-    this.input.once('pointerdown', (pointer) => {
-      // Convert screen to world coordinates
+
+    this.activeSpell = spellName;
+    this._highlightSpellButton(spellName, true);
+
+    // Targeted click handler stored so we can cancel it
+    this._pendingSpellListener = (pointer) => {
+      // Only cast if the click was not on a UI button (rough check by y-position)
+      if (pointer.y < 70) {
+        this._cancelSpellTargeting();
+        return;
+      }
+
       const worldX = pointer.x + this.cameras.main.scrollX;
       const worldY = pointer.y;
-      
-      // Cast spell at location
+
       this.castSpell(spellName, worldX, worldY);
-      
-      // Reset button color (if it exists)
-      if (spellName === 'shieldWall' && this.shieldButton) {
-        this.shieldButton.setFillStyle(CONFIG.COLORS.spellButton);
-      } else if (spellName === 'rainOfPila' && this.rainButton) {
-        this.rainButton.setFillStyle(CONFIG.COLORS.spellButton);
-      } else if (spellName === 'healingSpring' && this.healButton) {
-        this.healButton.setFillStyle(CONFIG.COLORS.spellButton);
-      }
-      
+      this._cancelCurrentSpellHighlight();
       this.activeSpell = null;
-    });
+      this._pendingSpellListener = null;
+    };
+
+    this.input.once('pointerdown', this._pendingSpellListener);
+  }
+
+  _highlightSpellButton(spellName, active) {
+    const color = active ? 0xFF6600 : CONFIG.COLORS.spellButton;
+    if (spellName === 'shieldWall' && this.shieldButton) this.shieldButton.setFillStyle(color);
+    else if (spellName === 'rainOfPila' && this.rainButton) this.rainButton.setFillStyle(color);
+    else if (spellName === 'healingSpring' && this.healButton) this.healButton.setFillStyle(color);
+    // Viking and alien buttons are in spellButtons object
+    if (this.spellButtons && this.spellButtons[spellName]) {
+      this.spellButtons[spellName].button.setFillStyle(color);
+    }
+  }
+
+  _cancelCurrentSpellHighlight() {
+    if (this.activeSpell) {
+      this._highlightSpellButton(this.activeSpell, false);
+    }
+  }
+
+  _cancelSpellTargeting() {
+    if (this._pendingSpellListener) {
+      this.input.off('pointerdown', this._pendingSpellListener);
+      this._pendingSpellListener = null;
+    }
+    this._cancelCurrentSpellHighlight();
+    this.activeSpell = null;
   }
   
   castSpell(spellName, x, y) {
@@ -5011,6 +5149,11 @@ export class GameScene extends Phaser.Scene {
       );
     }
 
+    // Move unit to rally point if set
+    if (this.rallyPoint && !unit.isWorker && !unit.canMine) {
+      unit._rallyTarget = { x: this.rallyPoint.x, y: this.rallyPoint.y };
+    }
+
     this.playerUnits.push(unit);
 
     // Play unit trained sound
@@ -5660,8 +5803,49 @@ export class GameScene extends Phaser.Scene {
           this.completeChallengeMode('speedblitz', elapsedTime);
         }
         break;
+
+      case 'two_front': {
+        // Viking Two Front War: spawn waves from BOTH sides simultaneously
+        if (!this.twoFrontActive) {
+          this.twoFrontActive = true;
+          this.twoFrontWaveInterval = 6000;
+          this.lastTwoFrontWave = 0;
+          // Show notice
+          const { width } = this.scale;
+          const notice = this.add.text(width / 2, 110, 'TWO FRONT WAR!\nDefend from both sides!', {
+            fontSize: '20px',
+            fontFamily: 'Press Start 2P',
+            color: '#FF4444',
+            stroke: '#000000',
+            strokeThickness: 5,
+            align: 'center',
+          });
+          notice.setOrigin(0.5);
+          notice.setScrollFactor(0);
+          notice.setDepth(1000);
+          this.time.delayedCall(3500, () => { if (notice.active) notice.destroy(); });
+        }
+
+        // Spawn enemies from the right (enemy base as usual)
+        // AND spawn a flanking wave from near the player base
+        if (time - this.lastTwoFrontWave > this.twoFrontWaveInterval) {
+          this.lastTwoFrontWave = time;
+
+          // Main wave from enemy side
+          const cfg = CONFIG.ALIEN_UNITS.drone;
+          const mainUnit = new Unit(this, CONFIG.ENEMY_BASE_X - 150, this.groundY - 40, cfg, true);
+          this.enemyUnits.push(mainUnit);
+
+          // Flanking unit spawns near the player's base and moves toward the center
+          const flankUnit = new Unit(this, CONFIG.PLAYER_BASE_X + 200, this.groundY - 40, cfg, true);
+          this.enemyUnits.push(flankUnit);
+          // Flanking unit should move right (same direction as player units) to create pressure
+          flankUnit._flanker = true;
+        }
+        break;
+      }
     }
-    
+
     // Note: Base destruction objectives are handled in Base.js die() method
     // This ensures progress is saved before gameOver() is called
   }
@@ -5915,7 +6099,19 @@ export class GameScene extends Phaser.Scene {
     
     // Update gold display
     this.goldText.setText(`${Math.floor(this.gold)}`);
-    
+
+    // Track income per second (rolling 5s window)
+    if (!this._incomeTrack) { this._incomeTrack = { lastGold: this.gold, lastTime: time, perSec: 0 }; }
+    const incomeElapsed = (time - this._incomeTrack.lastTime) / 1000;
+    if (incomeElapsed >= 5) {
+      this._incomeTrack.perSec = Math.max(0, (this.gold - this._incomeTrack.lastGold) / incomeElapsed);
+      this._incomeTrack.lastGold = this.gold;
+      this._incomeTrack.lastTime = time;
+    }
+    if (this._incomeText) {
+      this._incomeText.setText(`+${Math.round(this._incomeTrack.perSec)}/s`);
+    }
+
     // Track gold earned
     const currentGold = Math.floor(this.gold);
     if (currentGold > this.stats.goldEarned) {
@@ -6000,6 +6196,10 @@ export class GameScene extends Phaser.Scene {
       }
     }
     
+    // Passive mana regen for all factions
+    this.mana = Math.min(CONFIG.MAX_MANA, this.mana + CONFIG.PASSIVE_MANA_REGEN * (scaledDelta / 1000));
+    this.enemyMana = Math.min(CONFIG.MAX_MANA, this.enemyMana + CONFIG.PASSIVE_MANA_REGEN * (scaledDelta / 1000));
+
     // Generate mana from Odin's Blessing (Viking)
     if (this.odinsBlessing && this.odinsManaRate) {
       this.mana = Math.min(CONFIG.MAX_MANA, this.mana + this.odinsManaRate * (scaledDelta / 1000));
@@ -6093,6 +6293,18 @@ export class GameScene extends Phaser.Scene {
         aiChance = CONFIG.AI_SPAWN_CHANCE * 1.5; // Very frequent
       }
       
+      // Apply Cloning Vats cooldown reduction to AI spawn interval
+      if (this.alienUpgrades && this.alienUpgrades.cloningVats) {
+        const reduction = CONFIG.ALIEN_UPGRADES.cloningVats.cooldownReduction || 0.15;
+        aiInterval *= (1 - reduction);
+      }
+
+      // Emergency defense: spawn faster when base is under threat
+      if (this.enemyBase && this.enemyBase.health / this.enemyBase.maxHealth < CONFIG.AI_THREAT_HP_THRESHOLD) {
+        aiInterval *= 0.6;
+        aiChance = Math.min(1, aiChance * 1.5);
+      }
+
       if (time - this.lastAISpawn >= aiInterval) {
         if (Math.random() < aiChance) {
           this.spawnEnemyUnit();
@@ -6514,9 +6726,49 @@ export class GameScene extends Phaser.Scene {
   gameOver(playerWon) {
     if (this.isGameOver) return;
     this.isGameOver = true;
-    
+
     // Finalize stats
     this.stats.timeElapsed = this.time.now - this.stats.startTime;
+
+    // Cancel any pending spell targeting
+    if (this._pendingSpellListener) {
+      this._cancelSpellTargeting();
+    }
+
+    // Persist session to Supabase (fire and forget)
+    const timeSeconds = Math.floor(this.stats.timeElapsed / 1000);
+    const faction = this.vikingCampaign ? 'viking' : this.alienCampaign ? 'alien' : (this.selectedFaction || 'roman');
+    const gameMode = this.challengeMode ? 'challenge'
+      : this.skirmishDifficulty ? 'skirmish'
+      : this.campaignLevel ? 'campaign'
+      : 'other';
+
+    saveGameSession({
+      faction,
+      gameMode,
+      campaignLevel: this.campaignLevel || this.alienLevel || null,
+      difficulty: this.aiDifficulty || this.skirmishDifficulty || 'normal',
+      result: playerWon ? 'victory' : 'defeat',
+      timeSeconds,
+      unitsTrained: this.stats.unitsTrained || 0,
+      enemiesKilled: this.stats.enemiesKilled || 0,
+      unitsLost: this.stats.unitsLost || 0,
+      goldEarned: this.stats.goldEarned || 0,
+      spellsCast: this.stats.spellsCast || 0,
+    });
+
+    updatePlayerStats(playerWon, faction, timeSeconds, this.stats.enemiesKilled || 0);
+
+    if (playerWon) {
+      const score = (this.stats.enemiesKilled || 0) * 10 + Math.max(0, 300 - timeSeconds);
+      submitLeaderboardEntry(gameMode, faction, score, timeSeconds, this.stats.enemiesKilled || 0);
+    }
+
+    // Sync campaign progress to Supabase
+    const romanProgress = parseInt(localStorage.getItem('campaignProgress') || '1');
+    const vikingProgress = parseInt(localStorage.getItem('vikingCampaignProgress') || '1');
+    const alienProgress = parseInt(localStorage.getItem('alienCampaignProgress') || '1');
+    saveCampaignProgress(romanProgress, vikingProgress, alienProgress);
     
     // For Endless mode, save score even on defeat
     if (this.campaignObjective === 'challenge_endless' && !playerWon) {
@@ -6577,7 +6829,12 @@ export class GameScene extends Phaser.Scene {
   }
   
   updateCombatMusicVolume() {
-    MusicManager.syncVolume();
+    // Apply battle intensity to boost music volume dynamically
+    if (MusicManager.applyBattleIntensity) {
+      MusicManager.applyBattleIntensity(this.battleIntensity);
+    } else {
+      MusicManager.syncVolume();
+    }
   }
   
   calculateBattleIntensity() {
