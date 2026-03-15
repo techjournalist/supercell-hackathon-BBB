@@ -3,7 +3,6 @@ import { CONFIG } from './config.js';
 import { AudioManager } from './AudioManager.js';
 import { soundEffects } from './SoundEffectsManager.js';
 import * as Tone from 'tone';
-import { UNIT_SPRITE_SHEETS } from './BaseGameScene.js';
 
 export class Unit extends Phaser.GameObjects.Container {
   constructor(scene, x, y, config, isEnemy = false, factionId = 'roman') {
@@ -50,12 +49,7 @@ export class Unit extends Phaser.GameObjects.Container {
 
     const initialKey = this._walkAnimKey || spriteKey;
     this.sprite = scene.add.sprite(0, 0, initialKey);
-    const UNIT_SPRITE_SHEETS_DATA = UNIT_SPRITE_SHEETS[spriteKey];
-    if (UNIT_SPRITE_SHEETS_DATA && UNIT_SPRITE_SHEETS_DATA.frameWidth) {
-      this._baseScale = 0.15 * (96 / UNIT_SPRITE_SHEETS_DATA.frameWidth);
-    } else {
-      this._baseScale = 0.15;
-    }
+    this._baseScale = 0.15;
     this.sprite.setScale(this._baseScale);
     this.sprite.rotation = this._spawnTilt * (Math.PI / 180);
     this.updateFacing();
