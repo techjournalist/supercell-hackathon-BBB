@@ -51,7 +51,8 @@ export class Unit extends Phaser.GameObjects.Container {
 
     const initialKey = (this._walkAnimKey && scene.textures.exists(walkTexKey)) ? walkTexKey : spriteKey;
     this.sprite = scene.add.sprite(0, 0, initialKey);
-    this._baseScale = 0.15;
+    const vikingKeys = ['thrall', 'berserker', 'axeThrower', 'jarl'];
+    this._baseScale = vikingKeys.includes(spriteKey) ? 0.45 : 0.15;
     this.sprite.setScale(this._baseScale);
     this.sprite.rotation = this._spawnTilt * (Math.PI / 180);
     this.updateFacing();

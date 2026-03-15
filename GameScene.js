@@ -95,6 +95,7 @@ export class GameScene extends BaseGameScene {
     // Create layered background with parallax
     this.createBackground();
     this.createUnitAnimations();
+    this.generateVikingTextures();
     
     // Setup camera
     this.setupCamera();
@@ -1314,7 +1315,8 @@ export class GameScene extends BaseGameScene {
       else if (key === 'overlord') iconKey = 'overlord';
       
       const icon = this.add.sprite(x, centerY - 5, iconKey);
-      icon.setScale(0.06);
+      const vikingIconKeys = ['thrall', 'berserker', 'axeThrower', 'jarl'];
+      icon.setScale(vikingIconKeys.includes(iconKey) ? 0.28 : 0.06);
       icon.setScrollFactor(0);
       icon.setDepth(102);
       
