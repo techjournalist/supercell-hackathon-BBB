@@ -596,6 +596,215 @@ export class Unit extends Phaser.GameObjects.Container {
     return Math.max(1, Math.floor(baseDamage * rangeFalloff));
   }
 
+  isRangedUnit() {
+    return this.attackRange > 100;
+  }
+
+  getProjectileType() {
+    if (this.config.name === 'Axe Thrower') return 'axe';
+    if (this.factionId === 'alien' && this.isRangedUnit()) return 'laser';
+    if (this.config.name === 'Pilum Thrower') return 'pilum';
+    if (this.config.name === 'Tower') return 'pilum';
+    return 'pilum';
+  }
+
+  fireProjectile(targetX, targetY) {
+    const type = this.getProjectileType();
+    const startX = this.x;
+    const startY = this.y - 10;
+    const dx = targetX - startX;
+    const dy = targetY - startY;
+    const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+    const travelDuration = 320;
+
+    if (type === 'axe') {
+      const axeHead = this.scene.add.rectangle(startX, startY, 18, 8, 0xC0C0C0);
+      axeHead.setDepth(15);
+      axeHead.rotation = angle * (Math.PI / 180);
+
+      const axeHandle = this.scene.add.rectangle(startX, startY, 10, 3, 0x8B4513);
+      axeHandle.setDepth(14);
+
+      this.scene.tweens.add({
+        targets: [axeHead, axeHandle],
+        x: targetX,
+        y: targetY,
+        duration: travelDuration,
+        ease: 'Linear',
+        onUpdate: () => {
+          axeHead.rotation += 0.22;
+          axeHandle.x = axeHead.x;
+          axeHandle.y = axeHead.y;
+          axeHandle.rotation = axeHead.rotation + Math.PI / 2;
+        },
+        onComplete: () => {
+          this.spawnImpactFlash(targetX, targetY, type);
+          axeHead.destroy();
+          axeHandle.destroy();
+        }
+      });
+
+    } else if (type === 'laser') {
+      const laserLen = 22;
+      const bolt = this.scene.add.graphics();
+      bolt.setDepth(15);
+      bolt._angle = angle * Math.PI / 180;
+
+      const drawBolt = (progress) => {
+        bolt.clear();
+        const cx = startX + dx * progress;
+        const cy = startY + dy * progress;
+        const glow = 0x00FF88;
+        const core = 0xAAFFCC;
+        const pulse = 0.7 + 0.3 * Math.sin(progress * Math.PI * 6);
+
+        bolt.lineStyle(5, glow, 0.35 * pulse);
+        bolt.beginPath();
+        const bx = cx + Math.cos(bolt._angle) * laserLen * 0.5;
+        const by = cy + Math.sin(bolt._angle) * laserLen * 0.5;
+        const ex = cx - Math.cos(bolt._angle) * laserLen * 0.5;
+        const ey = cy - Math.sin(bolt._angle) * laserLen * 0.5;
+        bolt.moveTo(bx, by);
+        bolt.lineTo(ex, ey);
+        bolt.strokePath();
+
+        bolt.lineStyle(2, core, 0.9 * pulse);
+        bolt.beginPath();
+        bolt.moveTo(bx, by);
+        bolt.lineTo(ex, ey);
+        bolt.strokePath();
+      };
+
+      drawBolt(0);
+
+      this.scene.tweens.addCounter({
+        from: 0,
+        to: 1,
+        duration: travelDuration,
+        ease: 'Linear',
+        onUpdate: (tween) => {
+          drawBolt(tween.getValue());
+        },
+        onComplete: () => {
+          this.spawnImpactFlash(targetX, targetY, type);
+          bolt.destroy();
+        }
+      });
+
+    } else {
+      const pLen = 24;
+      const pilum = this.scene.add.graphics();
+      pilum.setDepth(15);
+      const rad = angle * Math.PI / 180;
+
+      const drawPilum = (cx, cy) => {
+        pilum.clear();
+        const tipX = cx + Math.cos(rad) * pLen * 0.5;
+        const tipY = cy + Math.sin(rad) * pLen * 0.5;
+        const tailX = cx - Math.cos(rad) * pLen * 0.5;
+        const tailY = cy - Math.sin(rad) * pLen * 0.5;
+
+        pilum.lineStyle(2, 0xD4A050, 0.9);
+        pilum.beginPath();
+        pilum.moveTo(tailX, tailY);
+        pilum.lineTo(tipX - Math.cos(rad) * 8, tipY - Math.sin(rad) * 8);
+        pilum.strokePath();
+
+        pilum.lineStyle(2, 0xE8E8E8, 1);
+        pilum.beginPath();
+        pilum.moveTo(tipX - Math.cos(rad) * 8, tipY - Math.sin(rad) * 8);
+        pilum.lineTo(tipX, tipY);
+        pilum.strokePath();
+      };
+
+      drawPilum(startX, startY);
+
+      this.scene.tweens.addCounter({
+        from: 0,
+        to: 1,
+        duration: travelDuration,
+        ease: 'Cubic.easeIn',
+        onUpdate: (tween) => {
+          const t = tween.getValue();
+          const cx = startX + dx * t;
+          const cy = startY + dy * t + Math.sin(t * Math.PI) * -12;
+          drawPilum(cx, cy);
+        },
+        onComplete: () => {
+          this.spawnImpactFlash(targetX, targetY, type);
+          pilum.destroy();
+        }
+      });
+    }
+  }
+
+  spawnImpactFlash(x, y, type) {
+    if (type === 'axe') {
+      const flash = this.scene.add.circle(x, y, 10, 0xCCCCCC, 0.7);
+      flash.setDepth(16);
+      for (let i = 0; i < 4; i++) {
+        const spark = this.scene.add.rectangle(x, y, 8, 2, 0xFFFFFF, 0.9);
+        spark.setDepth(16);
+        spark.rotation = (i / 4) * Math.PI;
+        this.scene.tweens.add({
+          targets: spark,
+          scaleX: 0.1,
+          alpha: 0,
+          duration: 200,
+          ease: 'Power2',
+          onComplete: () => spark.destroy()
+        });
+      }
+      this.scene.tweens.add({
+        targets: flash,
+        scaleX: 2.2,
+        scaleY: 2.2,
+        alpha: 0,
+        duration: 220,
+        ease: 'Power2',
+        onComplete: () => flash.destroy()
+      });
+
+    } else if (type === 'laser') {
+      const ring = this.scene.add.circle(x, y, 6, 0x00FF88, 0);
+      ring.setDepth(16);
+      ring.setStrokeStyle(2, 0x00FF88, 0.9);
+      const glow = this.scene.add.circle(x, y, 8, 0x00FF88, 0.5);
+      glow.setDepth(15);
+      this.scene.tweens.add({
+        targets: ring,
+        scaleX: 3,
+        scaleY: 3,
+        alpha: 0,
+        duration: 280,
+        ease: 'Power2',
+        onComplete: () => ring.destroy()
+      });
+      this.scene.tweens.add({
+        targets: glow,
+        scaleX: 0.1,
+        scaleY: 0.1,
+        alpha: 0,
+        duration: 180,
+        ease: 'Power3',
+        onComplete: () => glow.destroy()
+      });
+
+    } else {
+      const spark = this.scene.add.circle(x, y, 6, 0xFF9900, 0.9);
+      spark.setDepth(16);
+      this.scene.tweens.add({
+        targets: spark,
+        scaleX: 2.5,
+        scaleY: 2.5,
+        alpha: 0,
+        duration: 200,
+        ease: 'Power2',
+        onComplete: () => spark.destroy()
+      });
+    }
+  }
+
   attack() {
     if (!this.target || this.target.isDead || this.isAttacking) return;
 
@@ -608,6 +817,13 @@ export class Unit extends Phaser.GameObjects.Container {
     const distToTarget = this.target.x !== undefined
       ? Phaser.Math.Distance.Between(this.x, this.y, this.target.x, this.target.y)
       : 0;
+
+    const targetX = this.target.x ?? this.x;
+    const targetY = (this.target.y ?? this.y) - 10;
+
+    if (this.isRangedUnit()) {
+      this.fireProjectile(targetX, targetY);
+    }
 
     this.scene.tweens.add({
       targets: this.sprite,
