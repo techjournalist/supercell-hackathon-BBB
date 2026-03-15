@@ -902,6 +902,178 @@ export class GameScene extends BaseGameScene {
     });
   }
 
+  showEnemySpellAlert(spellName, description, accentColor) {
+    const { width, height } = this.scale;
+    const bannerY = 90;
+    const bannerW = Math.min(460, width * 0.55);
+    const bannerH = 54;
+    const bannerX = width / 2;
+
+    const bg = this.add.graphics();
+    bg.setScrollFactor(0);
+    bg.setDepth(950);
+    bg.fillStyle(0x0a0508, 0.88);
+    bg.fillRoundedRect(bannerX - bannerW / 2, bannerY, bannerW, bannerH, 8);
+    bg.lineStyle(2, accentColor, 0.9);
+    bg.strokeRoundedRect(bannerX - bannerW / 2, bannerY, bannerW, bannerH, 8);
+
+    const iconSize = 10;
+    const iconX = bannerX - bannerW / 2 + 18;
+    const iconY = bannerY + bannerH / 2;
+    const icon = this.add.graphics();
+    icon.setScrollFactor(0);
+    icon.setDepth(951);
+    icon.fillStyle(accentColor, 1);
+    icon.fillTriangle(iconX, iconY - iconSize, iconX - iconSize * 0.8, iconY + iconSize * 0.6, iconX + iconSize * 0.8, iconY + iconSize * 0.6);
+
+    const accentHex = '#' + accentColor.toString(16).padStart(6, '0');
+    const titleText = this.add.text(bannerX - bannerW / 2 + 38, bannerY + 9, `ENEMY CAST: ${spellName}`, {
+      fontSize: '11px',
+      fontFamily: 'Press Start 2P',
+      color: accentHex,
+      stroke: '#000000',
+      strokeThickness: 3,
+    });
+    titleText.setScrollFactor(0);
+    titleText.setDepth(951);
+
+    const descText = this.add.text(bannerX - bannerW / 2 + 38, bannerY + 32, description, {
+      fontSize: '9px',
+      fontFamily: 'Press Start 2P',
+      color: '#cccccc',
+      stroke: '#000000',
+      strokeThickness: 2,
+    });
+    descText.setScrollFactor(0);
+    descText.setDepth(951);
+
+    const all = [bg, icon, titleText, descText];
+    all.forEach(o => o.setAlpha(0));
+
+    this.tweens.add({
+      targets: all,
+      alpha: 1,
+      duration: 150,
+      ease: 'Power2',
+      onComplete: () => {
+        this.time.delayedCall(2200, () => {
+          this.tweens.add({
+            targets: all,
+            alpha: 0,
+            duration: 400,
+            onComplete: () => all.forEach(o => o.destroy())
+          });
+        });
+      }
+    });
+  }
+
+  showScreenVignette(color) {
+    const { width, height } = this.scale;
+    const vignette = this.add.graphics();
+    vignette.setScrollFactor(0);
+    vignette.setDepth(940);
+    vignette.fillStyle(color, 0.35);
+    vignette.fillRect(0, 0, width, 80);
+    vignette.fillRect(0, height - 80, width, 80);
+    vignette.fillRect(0, 0, 80, height);
+    vignette.fillRect(width - 80, 0, 80, height);
+    vignette.setAlpha(0);
+
+    this.tweens.add({
+      targets: vignette,
+      alpha: 1,
+      duration: 100,
+      yoyo: true,
+      repeat: 2,
+      onComplete: () => {
+        this.tweens.add({
+          targets: vignette,
+          alpha: 0,
+          duration: 300,
+          onComplete: () => vignette.destroy()
+        });
+      }
+    });
+  }
+
+  showFloatingSpellText(x, y, text, color) {
+    const screenX = x - this.cameras.main.scrollX;
+    const screenY = y - 60;
+
+    const label = this.add.text(screenX, screenY, text, {
+      fontSize: '10px',
+      fontFamily: 'Press Start 2P',
+      color,
+      stroke: '#000000',
+      strokeThickness: 3,
+    });
+    label.setScrollFactor(0);
+    label.setDepth(960);
+    label.setOrigin(0.5, 1);
+
+    this.tweens.add({
+      targets: label,
+      y: screenY - 50,
+      alpha: 0,
+      duration: 1800,
+      ease: 'Power2',
+      onComplete: () => label.destroy()
+    });
+  }
+
+  showMindControlIndicator() {
+    if (this._mindControlIndicator) return;
+    const { width, height } = this.scale;
+    const indicatorX = 12;
+    const indicatorY = height - 70;
+    const indicatorW = 220;
+    const indicatorH = 34;
+
+    const bg = this.add.graphics();
+    bg.setScrollFactor(0);
+    bg.setDepth(950);
+    bg.fillStyle(0x001a00, 0.9);
+    bg.fillRoundedRect(indicatorX, indicatorY, indicatorW, indicatorH, 6);
+    bg.lineStyle(2, 0x00ff44, 0.9);
+    bg.strokeRoundedRect(indicatorX, indicatorY, indicatorW, indicatorH, 6);
+
+    const label = this.add.text(indicatorX + 12, indicatorY + 9, '! UNIT MIND CONTROLLED', {
+      fontSize: '8px',
+      fontFamily: 'Press Start 2P',
+      color: '#00ff44',
+      stroke: '#000000',
+      strokeThickness: 2,
+    });
+    label.setScrollFactor(0);
+    label.setDepth(951);
+
+    this.tweens.add({
+      targets: [bg, label],
+      alpha: 0.5,
+      duration: 600,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
+
+    this._mindControlIndicator = { bg, label };
+  }
+
+  hideMindControlIndicator() {
+    if (!this._mindControlIndicator) return;
+    const { bg, label } = this._mindControlIndicator;
+    this._mindControlIndicator = null;
+    this.tweens.killTweensOf(bg);
+    this.tweens.killTweensOf(label);
+    this.tweens.add({
+      targets: [bg, label],
+      alpha: 0,
+      duration: 300,
+      onComplete: () => { bg.destroy(); label.destroy(); }
+    });
+  }
+
   createMinimap() {
     const { width, height } = this.scale;
     const minimapHeight = 30;
@@ -3893,16 +4065,24 @@ export class GameScene extends BaseGameScene {
     });
   }
   
-  castMindControl(targetUnit) {
+  castMindControl(targetUnit, isEnemyCast = false) {
     const config = CONFIG.MIND_CONTROL;
-    
+
     if (!targetUnit || targetUnit.isDead || targetUnit.isEnemy) return;
-    
+
+    if (isEnemyCast) {
+      const unitName = targetUnit.config?.name || 'your unit';
+      this.showEnemySpellAlert('MIND CONTROL', `${unitName} has been turned against you!`, 0x00dd44);
+      this.showFloatingSpellText(targetUnit.x, targetUnit.y, 'MIND CONTROLLED!', '#00ff44');
+      this.showScreenVignette(0x00aa44);
+      this.showMindControlIndicator();
+    }
+
     // Track mind control usage for Alien campaign L4
     if (this.campaignObjective === 'alien_mind_control') {
       this.mindControlCount++;
     }
-    
+
     // Store original properties
     targetUnit.originalIsEnemy = targetUnit.isEnemy;
     targetUnit.mindControlled = true;
@@ -3974,16 +4154,61 @@ export class GameScene extends BaseGameScene {
       try { antenna.destroy(); } catch {}
       try { antennaBulb.destroy(); } catch {}
       try { eyeGlow.destroy(); } catch {}
+      if (isEnemyCast) {
+        this.hideMindControlIndicator();
+      }
       if (!targetUnit.isDead) {
         targetUnit.health = 0;
         targetUnit.die();
       }
     });
   }
-  
-  castPlasmaBomb(x, y) {
+
+  castPlasmaBomb(x, y, isEnemyCast = false) {
     const config = CONFIG.PLASMA_BOMB;
-    
+
+    if (isEnemyCast) {
+      this.showEnemySpellAlert('PLASMA BOMB', 'Incoming alien bombardment!', 0xff6600);
+    }
+
+    let destroyCrosshair = () => {};
+    if (isEnemyCast) {
+      const crosshairOuter = this.add.circle(x, y, config.radius, 0xff4400, 0.15);
+      crosshairOuter.setDepth(490);
+      const crosshairRing = this.add.circle(x, y, config.radius);
+      crosshairRing.setStrokeStyle(3, 0xff4400, 0.9);
+      crosshairRing.setDepth(491);
+      const crosshairLine1 = this.add.line(x, y, -config.radius * 0.6, 0, config.radius * 0.6, 0, 0xff4400, 0.7);
+      crosshairLine1.setDepth(491);
+      const crosshairLine2 = this.add.line(x, y, 0, -config.radius * 0.6, 0, config.radius * 0.6, 0xff4400, 0.7);
+      crosshairLine2.setDepth(491);
+      const warnText = this.add.text(x, y - config.radius - 14, 'INCOMING!', {
+        fontSize: '9px',
+        fontFamily: 'Press Start 2P',
+        color: '#ff4400',
+        stroke: '#000000',
+        strokeThickness: 2,
+      });
+      warnText.setOrigin(0.5, 1);
+      warnText.setDepth(492);
+
+      this.tweens.add({
+        targets: [crosshairOuter, crosshairRing, crosshairLine1, crosshairLine2, warnText],
+        alpha: 0.3,
+        duration: 200,
+        yoyo: true,
+        repeat: 5,
+      });
+
+      destroyCrosshair = () => {
+        try { crosshairOuter.destroy(); } catch {}
+        try { crosshairRing.destroy(); } catch {}
+        try { crosshairLine1.destroy(); } catch {}
+        try { crosshairLine2.destroy(); } catch {}
+        try { warnText.destroy(); } catch {}
+      };
+    }
+
     // Mini-UFO flies in from top
     const ufo = this.add.ellipse(x, y - 300, 40, 20, 0x9C27B0);
     ufo.setStrokeStyle(3, CONFIG.COLORS.plasmaBomb);
@@ -4074,15 +4299,26 @@ export class GameScene extends BaseGameScene {
               });
             }
             
+            destroyCrosshair();
+
             // Damage all player units in radius
+            let hitCount = 0;
             this.playerUnits.forEach(unit => {
               if (unit.isDead) return;
               const dist = Phaser.Math.Distance.Between(x, y, unit.x, unit.y);
               if (dist <= config.radius) {
                 unit.takeDamage(config.damage, x, y);
+                hitCount++;
+                if (isEnemyCast) {
+                  this.showFloatingSpellText(unit.x, unit.y, 'PLASMA HIT!', '#ff6600');
+                }
               }
             });
-            
+
+            if (isEnemyCast && hitCount >= 2) {
+              this.showScreenVignette(0xff4400);
+            }
+
             // Screen shake
             this.cameras.main.shake(200, 0.005);
           }
@@ -6804,7 +7040,7 @@ export class GameScene extends BaseGameScene {
       if (cluster) {
         this.enemyMana -= CONFIG.PLASMA_BOMB.cost;
         this.alienSpellCooldowns.plasmaBomb = CONFIG.PLASMA_BOMB.cooldown;
-        this.castPlasmaBomb(cluster.x, cluster.y);
+        this.castPlasmaBomb(cluster.x, cluster.y, true);
         return;  // Only cast one spell per check
       }
     }
@@ -6856,7 +7092,7 @@ export class GameScene extends BaseGameScene {
         if (target) {
           this.enemyMana -= CONFIG.MIND_CONTROL.cost;
           this.alienSpellCooldowns.mindControl = CONFIG.MIND_CONTROL.cooldown;
-          this.castMindControl(target);
+          this.castMindControl(target, true);
         }
       }
     }
