@@ -50,7 +50,13 @@ export class Unit extends Phaser.GameObjects.Container {
 
     const initialKey = this._walkAnimKey || spriteKey;
     this.sprite = scene.add.sprite(0, 0, initialKey);
-    this.sprite.setScale(0.15);
+    const UNIT_SPRITE_SHEETS_DATA = UNIT_SPRITE_SHEETS[spriteKey];
+    if (UNIT_SPRITE_SHEETS_DATA && UNIT_SPRITE_SHEETS_DATA.frameWidth) {
+      this._baseScale = 0.15 * (96 / UNIT_SPRITE_SHEETS_DATA.frameWidth);
+    } else {
+      this._baseScale = 0.15;
+    }
+    this.sprite.setScale(this._baseScale);
     this.sprite.rotation = this._spawnTilt * (Math.PI / 180);
     this.updateFacing();
 
@@ -354,14 +360,15 @@ export class Unit extends Phaser.GameObjects.Container {
   }
 
   updateFacing() {
+    const s = this._baseScale || 0.15;
     if (this.isEnemy) {
       if (this.config.name === 'Overlord') {
-        this.sprite.setScale(0.15, 0.15);
+        this.sprite.setScale(s, s);
       } else {
-        this.sprite.setScale(-0.15, 0.15);
+        this.sprite.setScale(-s, s);
       }
     } else {
-      this.sprite.setScale(-0.15, 0.15);
+      this.sprite.setScale(-s, s);
     }
   }
 
@@ -583,10 +590,11 @@ export class Unit extends Phaser.GameObjects.Container {
             this._spawnFootDust(this.x, this.y);
           }
 
+          const s = this._baseScale || 0.15;
           const squashAmount = 1 + Math.sin(this.walkPhase) * 0.02;
           const currentScaleX = this.sprite.scaleX;
           const scaleSign = Math.sign(currentScaleX);
-          this.sprite.setScale(scaleSign * 0.15 * squashAmount, 0.15 / squashAmount);
+          this.sprite.setScale(scaleSign * s * squashAmount, s / squashAmount);
         }
       }
     }

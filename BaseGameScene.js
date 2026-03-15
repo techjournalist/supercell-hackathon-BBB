@@ -7,7 +7,7 @@ export const SPRITE_SHEET_FRAME_COUNT = 6;
 
 export const UNIT_SPRITE_SHEETS = {
   'worker':      { walk: 'worker_walk.png',      attack: 'worker_attack.png' },
-  'legionary':   { walk: 'legionary_walk.png',   attack: 'legionary_attack.png' },
+  'legionary':   { walk: 'legionary_walk.png',   attack: 'legionary_attack.png', frameWidth: 424, frameHeight: 416 },
   'pilum':       { walk: 'pilum_walk.png',        attack: 'pilum_attack.png' },
   'centurion':   { walk: 'centurion_walk.png',    attack: 'centurion_attack.png' },
   'scout':       { walk: 'scout_walk.png',        attack: 'scout_attack.png' },
@@ -61,12 +61,15 @@ export class BaseGameScene extends Phaser.Scene {
   }
 
   _loadSpriteSheetsIfAvailable() {
-    const frameConfig = {
+    const defaultFrameConfig = {
       frameWidth: SPRITE_SHEET_FRAME_WIDTH,
       frameHeight: SPRITE_SHEET_FRAME_HEIGHT,
     };
 
     Object.entries(UNIT_SPRITE_SHEETS).forEach(([key, files]) => {
+      const frameConfig = (files.frameWidth && files.frameHeight)
+        ? { frameWidth: files.frameWidth, frameHeight: files.frameHeight }
+        : defaultFrameConfig;
       this.load.spritesheet(`${key}_walk`, files.walk, frameConfig);
       this.load.spritesheet(`${key}_attack`, files.attack, frameConfig);
     });
