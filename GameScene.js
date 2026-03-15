@@ -522,25 +522,28 @@ export class GameScene extends BaseGameScene {
   }
   
   createGoldMines() {
-    // Player mine (left side, near player base) - Roman gold mine
+    let playerMineTexture = 'gold-mine';
+    if (this.vikingCampaign) playerMineTexture = 'viking-mine';
+    else if (this.alienCampaign) playerMineTexture = 'alien-mine';
+
     this.playerMine = new GoldMine(
       this,
       CONFIG.PLAYER_BASE_X + CONFIG.MINE_OFFSET_FROM_BASE,
       this.groundY - 40,
-      'gold-mine'
+      playerMineTexture
     );
-    this.playerMine.setDepth(8); // Above ground, below bases
-    
-    // Enemy mine (right side, near enemy base) - Alien extractor
+    this.playerMine.setDepth(8);
+
     this.enemyMine = new GoldMine(
       this,
       CONFIG.ENEMY_BASE_X - CONFIG.MINE_OFFSET_FROM_BASE,
       this.groundY - 40,
       'alien-mine'
     );
-    this.enemyMine.setDepth(8); // Above ground, below bases
-    
-    // Store enemy mines in array for fog of war
+    this.enemyMine.setDepth(8);
+
+    // Store mines in arrays (used by Thrall and fog of war)
+    this.playerGoldMines = [this.playerMine];
     this.enemyGoldMines = [this.enemyMine];
   }
   
@@ -4444,7 +4447,8 @@ export class GameScene extends BaseGameScene {
           CONFIG.PLAYER_BASE_X + 150 + (offset * 80),
           this.groundY - 40,
           CONFIG.VIKING_UNITS.berserker,
-          false
+          false,
+          'viking'
         );
         this.playerUnits.push(unit);
         offset++;
@@ -4671,7 +4675,8 @@ export class GameScene extends BaseGameScene {
             CONFIG.PLAYER_BASE_X + 150 + (i * 80),
             this.groundY - 40,
             CONFIG.VIKING_UNITS.berserker,
-            false
+            false,
+            'viking'
           );
           this.playerUnits.push(unit);
         }
@@ -5766,12 +5771,16 @@ export class GameScene extends BaseGameScene {
         false
       );
     } else {
+      let spawnFaction = 'roman';
+      if (this.vikingCampaign) spawnFaction = 'viking';
+      else if (this.alienCampaign) spawnFaction = 'alien';
       unit = new Unit(
         this,
         CONFIG.PLAYER_BASE_X + 150,
         this.groundY - 40,
         config,
-        false
+        false,
+        spawnFaction
       );
     }
 
