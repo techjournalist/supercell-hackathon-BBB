@@ -119,6 +119,18 @@ export class GameScene extends BaseGameScene {
     // Exploration AI
     this.explorationAIEnabled = true; // Enabled by default
     
+    // Stats tracking (initialized early so it's always available)
+    this.stats = {
+      unitsTrained: 0,
+      goldEarned: CONFIG.STARTING_GOLD,
+      goldSpent: 0,
+      spellsCast: 0,
+      startTime: 0,
+      timeElapsed: 0,
+      enemiesKilled: 0,
+      unitsLost: 0,
+    };
+
     // Unit arrays
     this.playerUnits = [];
     this.enemyUnits = [];
@@ -240,21 +252,9 @@ export class GameScene extends BaseGameScene {
     // Game over flag
     this.isGameOver = false;
     
-    // Initialize stats tracking
-    this.stats = {
-      unitsTrained: 0,
-      goldEarned: CONFIG.STARTING_GOLD,
-      goldSpent: 0,
-      spellsCast: 0,
-      startTime: 0,
-      timeElapsed: 0,
-      enemiesKilled: 0,
-      unitsLost: 0,
-    };
-    
-    // Start tracking time
+    // Set the actual start time now that we're fully initialized
     this.stats.startTime = this.time.now;
-    
+
     // Initialize achievement manager
     this.achievementManager = new AchievementManager(this);
     
@@ -4654,7 +4654,9 @@ export class GameScene extends BaseGameScene {
         this.aiDifficulty = 'easy';
         this.aiSpellsEnabled = false;
         // Make enemy Roman
-        this.enemyBase.setTexture('player-castle');
+        if (this.enemyBase && this.enemyBase.castle) {
+          this.enemyBase.castle.setTexture('player-castle');
+        }
         break;
         
       case 3: // Frozen Stand - Survival
