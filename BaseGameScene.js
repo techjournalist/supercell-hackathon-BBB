@@ -1,6 +1,27 @@
 import Phaser from 'phaser';
 import { CONFIG } from './config.js';
 
+export const SPRITE_SHEET_FRAME_WIDTH = 96;
+export const SPRITE_SHEET_FRAME_HEIGHT = 96;
+export const SPRITE_SHEET_FRAME_COUNT = 6;
+
+export const UNIT_SPRITE_SHEETS = {
+  'worker':      { walk: 'worker_walk.png',      attack: 'worker_attack.png' },
+  'legionary':   { walk: 'legionary_walk.png',   attack: 'legionary_attack.png' },
+  'pilum':       { walk: 'pilum_walk.png',        attack: 'pilum_attack.png' },
+  'centurion':   { walk: 'centurion_walk.png',    attack: 'centurion_attack.png' },
+  'scout':       { walk: 'scout_walk.png',        attack: 'scout_attack.png' },
+  'harvester':   { walk: 'harvester_walk.png',    attack: 'harvester_attack.png' },
+  'alien-scout': { walk: 'alien_scout_walk.png',  attack: 'alien_scout_attack.png' },
+  'drone':       { walk: 'drone_walk.png',        attack: 'drone_attack.png' },
+  'blaster':     { walk: 'blaster_walk.png',      attack: 'blaster_attack.png' },
+  'overlord':    { walk: 'overlord_walk.png',     attack: 'overlord_attack.png' },
+  'thrall':      { walk: 'thrall_walk.png',       attack: 'thrall_attack.png' },
+  'berserker':   { walk: 'berserker_walk.png',    attack: 'berserker_attack.png' },
+  'axeThrower':  { walk: 'axe_thrower_walk.png',  attack: 'axe_thrower_attack.png' },
+  'jarl':        { walk: 'jarl_walk.png',         attack: 'jarl_attack.png' },
+};
+
 export class BaseGameScene extends Phaser.Scene {
   preloadGameAssets() {
     this.load.on('loaderror', (file) => {
@@ -35,6 +56,45 @@ export class BaseGameScene extends Phaser.Scene {
     this.load.image('gold-mine', 'https://rosebud.ai/assets/gold-mine.webp?zSoi');
     this.load.image('alien-mine', 'https://rosebud.ai/assets/alien-mine.webp?qbWt');
     this.load.image('viking-mine', 'https://rosebud.ai/assets/viking-mine.webp?SnGW');
+
+    this._loadSpriteSheetsIfAvailable();
+  }
+
+  _loadSpriteSheetsIfAvailable() {
+    const frameConfig = {
+      frameWidth: SPRITE_SHEET_FRAME_WIDTH,
+      frameHeight: SPRITE_SHEET_FRAME_HEIGHT,
+    };
+
+    Object.entries(UNIT_SPRITE_SHEETS).forEach(([key, files]) => {
+      this.load.spritesheet(`${key}_walk`, files.walk, frameConfig);
+      this.load.spritesheet(`${key}_attack`, files.attack, frameConfig);
+    });
+  }
+
+  createUnitAnimations() {
+    Object.keys(UNIT_SPRITE_SHEETS).forEach((key) => {
+      const walkKey = `${key}_walk`;
+      const attackKey = `${key}_attack`;
+
+      if (this.textures.exists(walkKey) && !this.anims.exists(walkKey)) {
+        this.anims.create({
+          key: walkKey,
+          frames: this.anims.generateFrameNumbers(walkKey, { start: 0, end: SPRITE_SHEET_FRAME_COUNT - 1 }),
+          frameRate: 10,
+          repeat: -1,
+        });
+      }
+
+      if (this.textures.exists(attackKey) && !this.anims.exists(attackKey)) {
+        this.anims.create({
+          key: attackKey,
+          frames: this.anims.generateFrameNumbers(attackKey, { start: 0, end: SPRITE_SHEET_FRAME_COUNT - 1 }),
+          frameRate: 12,
+          repeat: 0,
+        });
+      }
+    });
   }
 
   createBackground() {

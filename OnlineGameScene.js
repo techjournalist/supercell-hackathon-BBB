@@ -44,6 +44,7 @@ export class OnlineGameScene extends BaseGameScene {
     this._pendingCommands = [];
 
     this._createBackground(width, height);
+    this.createUnitAnimations();
 
     this._myBase = null;
     this._oppBase = null;

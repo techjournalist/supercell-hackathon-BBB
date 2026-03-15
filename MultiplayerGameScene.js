@@ -33,6 +33,7 @@ export class MultiplayerGameScene extends BaseGameScene {
     
     // Create shared background
     this.createBackground();
+    this.createUnitAnimations();
     
     // Create two cameras for split-screen
     this.createSplitScreenCameras();

@@ -94,6 +94,7 @@ export class GameScene extends BaseGameScene {
     
     // Create layered background with parallax
     this.createBackground();
+    this.createUnitAnimations();
     
     // Setup camera
     this.setupCamera();

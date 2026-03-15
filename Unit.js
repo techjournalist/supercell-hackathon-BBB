@@ -3,6 +3,7 @@ import { CONFIG } from './config.js';
 import { AudioManager } from './AudioManager.js';
 import { soundEffects } from './SoundEffectsManager.js';
 import * as Tone from 'tone';
+import { UNIT_SPRITE_SHEETS } from './BaseGameScene.js';
 
 export class Unit extends Phaser.GameObjects.Container {
   constructor(scene, x, y, config, isEnemy = false, factionId = 'roman') {
@@ -43,7 +44,12 @@ export class Unit extends Phaser.GameObjects.Container {
 
     // Sprite
     const spriteKey = this.getSpriteKey();
-    this.sprite = scene.add.sprite(0, 0, spriteKey);
+    this._walkAnimKey = scene.textures.exists(`${spriteKey}_walk`) ? `${spriteKey}_walk` : null;
+    this._attackAnimKey = scene.textures.exists(`${spriteKey}_attack`) ? `${spriteKey}_attack` : null;
+    this._hasSpritesheetAnims = !!this._walkAnimKey;
+
+    const initialKey = this._walkAnimKey || spriteKey;
+    this.sprite = scene.add.sprite(0, 0, initialKey);
     this.sprite.setScale(0.15);
     this.sprite.rotation = this._spawnTilt * (Math.PI / 180);
     this.updateFacing();
@@ -266,16 +272,19 @@ export class Unit extends Phaser.GameObjects.Container {
 
     // Drone/Overlord float hover
     if (name === 'Drone' || name === 'Overlord') {
-      this.idleTween = this.scene.tweens.add({
+      const tweenProps = {
         targets: this.sprite,
         y: '+=5',
-        scaleX: { value: this.sprite.scaleX * 1.02, yoyo: true },
-        scaleY: { value: 0.15 * 1.02, yoyo: true },
         duration: 1400 + Math.random() * 400,
         yoyo: true,
         repeat: -1,
         ease: 'Sine.easeInOut',
-      });
+      };
+      if (!this._hasSpritesheetAnims) {
+        tweenProps.scaleX = { value: this.sprite.scaleX * 1.02, yoyo: true };
+        tweenProps.scaleY = { value: 0.15 * 1.02, yoyo: true };
+      }
+      this.idleTween = this.scene.tweens.add(tweenProps);
       return;
     }
 
@@ -296,12 +305,20 @@ export class Unit extends Phaser.GameObjects.Container {
       this.sprite.y = 0;
     }
     this._isWalking = true;
+    if (this._hasSpritesheetAnims && this._walkAnimKey) {
+      if (this.scene.anims.exists(this._walkAnimKey)) {
+        this.sprite.play(this._walkAnimKey, true);
+      }
+    }
   }
 
   stopWalkAnimation() {
     this.sprite.y = 0;
     this._isWalking = false;
     this._clearLimbs();
+    if (this._hasSpritesheetAnims && this._walkAnimKey) {
+      this.sprite.stop();
+    }
     this.startIdleAnimation();
   }
 
@@ -545,25 +562,32 @@ export class Unit extends Phaser.GameObjects.Container {
 
         const oldWalkPhase = this.walkPhase || 0;
         this.walkPhase = (this.walkPhase || 0) + (delta / 1000) * this.speed * 0.05;
-        const bounceAmount = Math.sin(this.walkPhase) * 5;
-        this.sprite.y = bounceAmount;
 
-        // Procedural limb walk cycle
-        this._drawLimbs(this.walkPhase);
+        if (this._hasSpritesheetAnims) {
+          const oldStep = Math.floor(oldWalkPhase / Math.PI);
+          const newStep = Math.floor(this.walkPhase / Math.PI);
+          if (oldStep !== newStep) {
+            soundEffects.playFootstep(this.factionId);
+            this._spawnFootDust(this.x, this.y);
+          }
+        } else {
+          const bounceAmount = Math.sin(this.walkPhase) * 5;
+          this.sprite.y = bounceAmount;
 
-        // Footstep sound + dust
-        const oldStep = Math.floor(oldWalkPhase / Math.PI);
-        const newStep = Math.floor(this.walkPhase / Math.PI);
-        if (oldStep !== newStep) {
-          soundEffects.playFootstep(this.factionId);
-          this._spawnFootDust(this.x, this.y);
+          this._drawLimbs(this.walkPhase);
+
+          const oldStep = Math.floor(oldWalkPhase / Math.PI);
+          const newStep = Math.floor(this.walkPhase / Math.PI);
+          if (oldStep !== newStep) {
+            soundEffects.playFootstep(this.factionId);
+            this._spawnFootDust(this.x, this.y);
+          }
+
+          const squashAmount = 1 + Math.sin(this.walkPhase) * 0.02;
+          const currentScaleX = this.sprite.scaleX;
+          const scaleSign = Math.sign(currentScaleX);
+          this.sprite.setScale(scaleSign * 0.15 * squashAmount, 0.15 / squashAmount);
         }
-
-        // Squash and stretch
-        const squashAmount = 1 + Math.sin(this.walkPhase) * 0.02;
-        const currentScaleX = this.sprite.scaleX;
-        const scaleSign = Math.sign(currentScaleX);
-        this.sprite.setScale(scaleSign * 0.15 * squashAmount, 0.15 / squashAmount);
       }
     }
 
@@ -1183,26 +1207,43 @@ export class Unit extends Phaser.GameObjects.Container {
       this.spawnMeleeSlash(targetX, targetY);
     }
 
-    this.scene.tweens.add({
-      targets: this.sprite,
-      scaleX: originalScaleX * 1.3,
-      scaleY: originalScaleY * 1.2,
-      x: this.sprite.x + (swingDirection * 10),
-      duration: 150,
-      yoyo: true,
-      onYoyo: () => {
+    if (this._hasSpritesheetAnims && this._attackAnimKey && this.scene.anims.exists(this._attackAnimKey)) {
+      this.sprite.play(this._attackAnimKey, true);
+      this.sprite.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => {
         if (this.target && !this.target.isDead) {
           const base = this.getEffectiveDamage();
           const final = this.calculateRangedDamage(base, distToTarget);
           this.target.takeDamage(final, this.x, this.y, this);
           this.playAttackSound();
         }
-      },
-      onComplete: () => {
         this.sprite.x = 0;
         this.isAttacking = false;
-      },
-    });
+        if (this._isWalking && this._walkAnimKey && this.scene.anims.exists(this._walkAnimKey)) {
+          this.sprite.play(this._walkAnimKey, true);
+        }
+      });
+    } else {
+      this.scene.tweens.add({
+        targets: this.sprite,
+        scaleX: originalScaleX * 1.3,
+        scaleY: originalScaleY * 1.2,
+        x: this.sprite.x + (swingDirection * 10),
+        duration: 150,
+        yoyo: true,
+        onYoyo: () => {
+          if (this.target && !this.target.isDead) {
+            const base = this.getEffectiveDamage();
+            const final = this.calculateRangedDamage(base, distToTarget);
+            this.target.takeDamage(final, this.x, this.y, this);
+            this.playAttackSound();
+          }
+        },
+        onComplete: () => {
+          this.sprite.x = 0;
+          this.isAttacking = false;
+        },
+      });
+    }
   }
 
   playAttackSound() {
