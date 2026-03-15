@@ -1,6 +1,12 @@
 import { defineConfig } from 'vite';
+import path from 'path';
 
 export default defineConfig({
+  resolve: {
+    alias: {
+      '@supabase/supabase-js': path.resolve('./supabase-cdn-shim.js'),
+    },
+  },
   server: {
     host: true,
     port: 5173,
