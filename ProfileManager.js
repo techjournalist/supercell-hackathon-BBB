@@ -5,6 +5,8 @@ const ACTIVE_KEY = 'bbb_active_profile';
 const ICONS = ['sword', 'shield', 'skull'];
 const ICON_CHARS = { sword: '⚔', shield: '🛡', skull: '💀' };
 
+let _profilesCache = null;
+
 function defaultProfile(slot) {
   return {
     slot,
@@ -20,15 +22,19 @@ function defaultProfile(slot) {
 }
 
 function loadProfiles() {
+  if (_profilesCache !== null) return _profilesCache;
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
+    _profilesCache = raw ? JSON.parse(raw) : [];
+    return _profilesCache;
   } catch {
-    return [];
+    _profilesCache = [];
+    return _profilesCache;
   }
 }
 
 function saveProfiles(profiles) {
+  _profilesCache = profiles;
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(profiles));
   } catch {}

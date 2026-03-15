@@ -1,22 +1,53 @@
 export class AudioManager {
+  static _cache = {
+    musicEnabled: null,
+    sfxEnabled: null,
+    masterVolume: null,
+    musicVolume: null,
+    sfxVolume: null,
+  };
+
+  static _invalidate() {
+    this._cache.musicEnabled = null;
+    this._cache.sfxEnabled = null;
+    this._cache.masterVolume = null;
+    this._cache.musicVolume = null;
+    this._cache.sfxVolume = null;
+  }
+
   static isMusicEnabled() {
-    return localStorage.getItem('musicEnabled') !== 'false';
+    if (this._cache.musicEnabled === null) {
+      this._cache.musicEnabled = localStorage.getItem('musicEnabled') !== 'false';
+    }
+    return this._cache.musicEnabled;
   }
 
   static isSFXEnabled() {
-    return localStorage.getItem('sfxEnabled') !== 'false';
+    if (this._cache.sfxEnabled === null) {
+      this._cache.sfxEnabled = localStorage.getItem('sfxEnabled') !== 'false';
+    }
+    return this._cache.sfxEnabled;
   }
 
   static getMasterVolume() {
-    return parseFloat(localStorage.getItem('gameVolume') || '0.7');
+    if (this._cache.masterVolume === null) {
+      this._cache.masterVolume = parseFloat(localStorage.getItem('gameVolume') || '0.7');
+    }
+    return this._cache.masterVolume;
   }
 
   static getMusicVolume() {
-    return parseFloat(localStorage.getItem('musicVolume') || String(this.getMasterVolume()));
+    if (this._cache.musicVolume === null) {
+      this._cache.musicVolume = parseFloat(localStorage.getItem('musicVolume') || String(this.getMasterVolume()));
+    }
+    return this._cache.musicVolume;
   }
 
   static getSFXVolume() {
-    return parseFloat(localStorage.getItem('sfxVolume') || String(this.getMasterVolume()));
+    if (this._cache.sfxVolume === null) {
+      this._cache.sfxVolume = parseFloat(localStorage.getItem('sfxVolume') || String(this.getMasterVolume()));
+    }
+    return this._cache.sfxVolume;
   }
 
   static shouldPlayMusic() {
@@ -35,6 +66,7 @@ export class AudioManager {
     } else if (type === 'sfx') {
       localStorage.setItem('sfxVolume', String(clamped));
     }
+    this._invalidate();
   }
 
   static toggleMute(type) {
@@ -45,6 +77,7 @@ export class AudioManager {
       const current = this.isSFXEnabled();
       localStorage.setItem('sfxEnabled', current ? 'false' : 'true');
     }
+    this._invalidate();
   }
 
   static get volumes() {

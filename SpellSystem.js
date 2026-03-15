@@ -64,8 +64,16 @@ export class SpellSystem {
         range: `${CONFIG.FROST_SHIELD.radius}px radius`,
       },
     };
+
+    // Pre-build tooltip strings once to avoid string concatenation on every hover
+    this._tooltipCache = {};
+    for (const spellKey in this.spellData) {
+      const spell = this.spellData[spellKey];
+      this._tooltipCache[spellKey] =
+        `${spell.name}\n${spell.desc}\n\nCost: ${spell.cost} mana\nCooldown: ${spell.cooldown / 1000}s\nRange: ${spell.range}`;
+    }
   }
-  
+
   getCost(spellKey) {
     return this.spellData[spellKey]?.cost || 0;
   }
@@ -75,16 +83,7 @@ export class SpellSystem {
   }
   
   getTooltipText(spellKey) {
-    const spell = this.spellData[spellKey];
-    if (!spell) return '';
-    
-    let text = `${spell.name}\n`;
-    text += `${spell.desc}\n\n`;
-    text += `Cost: ${spell.cost} mana\n`;
-    text += `Cooldown: ${spell.cooldown / 1000}s\n`;
-    text += `Range: ${spell.range}`;
-    
-    return text;
+    return this._tooltipCache[spellKey] || '';
   }
   
   isAvailable(spellKey, currentMana, cooldowns) {

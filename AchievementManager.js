@@ -10,16 +10,21 @@ function safeSet(key, value) {
 export class AchievementManager {
   constructor(scene) {
     this.scene = scene;
-    this.notifications = [];
+    this._unlockedCache = new Set();
+    this._notificationCount = 0;
   }
-  
-  unlockAchievement(achievementId) {
-    // Check if already unlocked
-    if (safeGet(`achievement_${achievementId}`) === 'true') {
-      return false; // Already unlocked
-    }
 
-    // Unlock the achievement
+  _isUnlocked(achievementId) {
+    if (this._unlockedCache.has(achievementId)) return true;
+    const stored = safeGet(`achievement_${achievementId}`) === 'true';
+    if (stored) this._unlockedCache.add(achievementId);
+    return stored;
+  }
+
+  unlockAchievement(achievementId) {
+    if (this._isUnlocked(achievementId)) return false;
+
+    this._unlockedCache.add(achievementId);
     safeSet(`achievement_${achievementId}`, 'true');
     safeSet(`achievement_date_${achievementId}`, new Date().toISOString());
     
@@ -100,9 +105,11 @@ export class AchievementManager {
       ease: 'Back.easeOut',
     });
     
-    // Hold for 3 seconds
+    this._notificationCount++;
+    const notifId = this._notificationCount;
+
+    // Hold for 3 seconds then slide out and destroy
     scene.time.delayedCall(3500, () => {
-      // Slide out to top
       scene.tweens.add({
         targets: [banner, unlockedText, icon, nameText],
         y: '-=200',
@@ -116,9 +123,6 @@ export class AchievementManager {
         }
       });
     });
-    
-    // Store reference to prevent spam
-    this.notifications.push({ banner, unlockedText, icon, nameText });
   }
   
   // Check achievement conditions
@@ -173,11 +177,7 @@ export class AchievementManager {
   }
   
   checkAllCampaigns() {
-    const roman = safeGet('achievement_roman_complete') === 'true';
-    const viking = safeGet('achievement_viking_complete') === 'true';
-    const alien = safeGet('achievement_alien_complete') === 'true';
-    
-    if (roman && viking && alien) {
+    if (this._isUnlocked('roman_complete') && this._isUnlocked('viking_complete') && this._isUnlocked('alien_complete')) {
       this.unlockAchievement('all_campaigns');
     }
   }

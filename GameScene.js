@@ -18,56 +18,19 @@ import { AudioManager } from './AudioManager.js';
 import { soundEffects } from './SoundEffectsManager.js';
 import { MusicManager } from './MusicManager.js';
 import { saveGameSession, submitLeaderboardEntry, updatePlayerStats, saveCampaignProgress } from './supabase.js';
+import { BaseGameScene } from './BaseGameScene.js';
 
-export class GameScene extends Phaser.Scene {
+export class GameScene extends BaseGameScene {
   constructor() {
     super({ key: 'GameScene' });
   }
   
   preload() {
-    this.load.on('loaderror', (file) => {
-      console.warn(`Asset failed to load: ${file.key} (${file.url})`);
-    });
-
-    // Load background assets
-    this.load.image('sky', 'https://rosebud.ai/assets/purple-sky-background.webp?764C');
-    this.load.image('mountains', 'https://rosebud.ai/assets/mountains-layer.webp?hr6l');
-    this.load.image('ground', 'https://rosebud.ai/assets/ground-terrain.webp?y66d');
-    
-    // Load castle assets
-    this.load.image('player-castle', 'https://rosebud.ai/assets/player-castle.webp?v688');
-    this.load.image('alien-base', 'https://rosebud.ai/assets/alien-base.webp?YyOt');
-    this.load.image('viking-base', 'https://rosebud.ai/assets/viking-base.webp?TXvW');
-    
-    // Load unit assets - Roman units (player)
-    this.load.image('worker', 'https://rosebud.ai/assets/worker-unit.webp?J01Z');
-    this.load.image('legionary', 'https://rosebud.ai/assets/legionary-unit.webp?qjIO');
-    this.load.image('pilum', 'https://rosebud.ai/assets/pilum-thrower-unit.webp?T3tA');
-    this.load.image('centurion', 'https://rosebud.ai/assets/centurion-unit.webp?DAva');
-    this.load.image('scout', 'https://rosebud.ai/assets/scout-unit.webp?YOqf');
-    
-    // Load unit assets - Alien units (enemy)
-    this.load.image('harvester', 'https://rosebud.ai/assets/harvester-unit.webp?Rn3x');
-    this.load.image('alien-scout', 'https://rosebud.ai/assets/alien-scout-unit.webp?fkPM');
-    this.load.image('drone', 'https://rosebud.ai/assets/drone-unit.webp?15fr');
-    this.load.image('blaster', 'https://rosebud.ai/assets/blaster-unit.webp?jDED');
-    this.load.image('overlord', 'https://rosebud.ai/assets/overlord-unit.webp?htbf');
-    
-    // Load unit assets - Viking units
-    this.load.image('thrall', 'https://rosebud.ai/assets/thrall-unit.webp?KkBj');
-    this.load.image('berserker', 'https://rosebud.ai/assets/berserker-unit.webp?J07Q');
-    this.load.image('axeThrower', 'https://rosebud.ai/assets/axe-thrower-unit.webp?IyG2');
-    this.load.image('jarl', 'https://rosebud.ai/assets/jarl-unit.webp?QY82');
-    
-    // Legacy units (if needed)
+    this.preloadGameAssets();
+    // Legacy units
     this.load.image('knight', 'https://rosebud.ai/assets/knight-unit.webp?ZAkc');
     this.load.image('archer', 'https://rosebud.ai/assets/archer-unit.webp?5aNE');
     this.load.image('enemy-warrior', 'https://rosebud.ai/assets/enemy-warrior.webp?3gAe');
-    
-    // Load resource assets
-    this.load.image('gold-mine', 'https://rosebud.ai/assets/gold-mine.webp?zSoi');
-    this.load.image('alien-mine', 'https://rosebud.ai/assets/alien-mine.webp?qbWt');
-    this.load.image('viking-mine', 'https://rosebud.ai/assets/viking-mine.webp?SnGW');
   }
   
   create() {
@@ -103,6 +66,8 @@ export class GameScene extends Phaser.Scene {
     // Battle intensity tracking
     this.battleIntensity = 0; // 0 to 1 scale
     this.lastIntensityUpdate = 0;
+    this._lastAffordabilityUpdate = 0;
+    this._affordabilityInterval = 60; // ms between affordability/upgrade checks
     this.baseVolume = 0.7; // Base music volume
     this.maxVolumeBoost = 0.3; // Can increase up to +30% volume
     this.intensityIconPulsing = false; // Track if icon pulse animation is active
@@ -921,7 +886,9 @@ export class GameScene extends Phaser.Scene {
     // Track revealed areas (for permanent vision on visited areas)
     this.revealedAreas = new Set();
     this.revealGridSize = 100; // Grid cell size for tracking
-    
+    this._lastFogUpdate = 0;
+    this._fogUpdateInterval = 100; // ms between fog redraws
+
     // Initial fog coverage - cover the entire world
     this.updateFogOfWar();
   }
@@ -6222,34 +6189,20 @@ export class GameScene extends Phaser.Scene {
       this.aqueduct.update(time, delta);
     }
     
-    // Update cooldowns (use scaledDelta to respect game speed)
-    Object.keys(this.unitCooldowns).forEach(key => {
-      if (this.unitCooldowns[key] > 0) {
-        this.unitCooldowns[key] -= scaledDelta;
-      }
-    });
-    
-    // Update probe beam cooldown
-    if (this.probeBeamCooldown > 0) {
-      this.probeBeamCooldown -= scaledDelta;
-    }
-    
-    // Update spell cooldowns
-    Object.keys(this.spellCooldowns).forEach(key => {
-      if (this.spellCooldowns[key] > 0) {
-        this.spellCooldowns[key] -= scaledDelta;
-      }
-    });
-    
-    // Update alien spell cooldowns
-    Object.keys(this.alienSpellCooldowns).forEach(key => {
-      if (this.alienSpellCooldowns[key] > 0) {
-        this.alienSpellCooldowns[key] -= scaledDelta;
-      }
-    });
+    // Update all cooldowns in unified loops (use scaledDelta to respect game speed)
+    const uc = this.unitCooldowns;
+    for (const key in uc) { if (uc[key] > 0) uc[key] -= scaledDelta; }
+
+    if (this.probeBeamCooldown > 0) this.probeBeamCooldown -= scaledDelta;
+
+    const sc = this.spellCooldowns;
+    for (const key in sc) { if (sc[key] > 0) sc[key] -= scaledDelta; }
+
+    const asc = this.alienSpellCooldowns;
+    for (const key in asc) { if (asc[key] > 0) asc[key] -= scaledDelta; }
     
     // Update button states
-    this.updateButtonStates();
+    this.updateButtonStates(time);
     
     // Update units (dead units are removed immediately in Unit.die())
     this.playerUnits.forEach(unit => unit.update(time, scaledDelta));
@@ -6260,9 +6213,12 @@ export class GameScene extends Phaser.Scene {
       this.minimap.update();
     }
     
-    // Update fog of war
-    this.updateFogOfWar();
-    
+    // Update fog of war (throttled)
+    if (time - this._lastFogUpdate >= this._fogUpdateInterval) {
+      this._lastFogUpdate = time;
+      this.updateFogOfWar();
+    }
+
     // Update battle intensity and music volume (every 200ms for smooth transitions)
     if (time - this.lastIntensityUpdate >= 200) {
       this.calculateBattleIntensity();
@@ -6607,96 +6563,90 @@ export class GameScene extends Phaser.Scene {
     });
   }
   
-  updateButtonStates() {
-    // Update unit buttons with progress fill
+  updateButtonStates(time) {
+    // --- Fast path: cooldown visuals (runs every frame) ---
+
+    // Update unit buttons cooldown progress fill
     this.unitButtons.forEach(({ key, button, progressFill, maxCooldown }) => {
-      const config = CONFIG.UNITS[key] || CONFIG.VIKING_UNITS[key] || CONFIG.ALIEN_UNITS[key];
-      const canAfford = this.canAfford(config.cost);
       const cooldownRemaining = this.unitCooldowns[key];
       const onCooldown = cooldownRemaining > 0;
-      
-      // Campaign restrictions
-      let disabled = false;
-      if (this.disableTraining) {
-        disabled = true; // Level 4 - no training allowed
-      } else if (this.disableWorkers && key === 'worker') {
-        disabled = true; // Level 6 - no workers allowed
-      }
-      
-      // Show/hide progress fill
+      let disabled = this.disableTraining || (this.disableWorkers && key === 'worker');
+
       if (disabled) {
         progressFill.setVisible(false);
         button.setAlpha(0.3);
       } else if (onCooldown) {
         progressFill.setVisible(true);
-        const progress = 1 - (cooldownRemaining / maxCooldown);
-        progressFill.width = 50 * progress;  // Fill from left to right
+        progressFill.width = 50 * (1 - cooldownRemaining / maxCooldown);
         button.setAlpha(0.7);
       } else {
         progressFill.setVisible(false);
-        button.setAlpha(canAfford ? 1 : 0.5);
       }
     });
-    
-    // Update probe beam cooldown display (only if it exists)
+
+    // Update probe beam cooldown display
     if (this.probeCooldownOverlay && this.probeCooldownBar) {
       if (this.probeBeamCooldown > 0) {
         this.probeCooldownOverlay.setVisible(true);
         this.probeCooldownBar.setVisible(true);
-        
-        const progress = 1 - (this.probeBeamCooldown / CONFIG.PROBE_BEAM_COOLDOWN);
-        this.probeCooldownBar.width = 80 * progress;
+        this.probeCooldownBar.width = 80 * (1 - this.probeBeamCooldown / CONFIG.PROBE_BEAM_COOLDOWN);
       } else {
         this.probeCooldownOverlay.setVisible(false);
         this.probeCooldownBar.setVisible(false);
       }
     }
-    
-    // Update aqueduct button state
-    if (this.aqueductButton) {
-      if (this.aqueductButtonState === 'build') {
-        // Building state - check if can afford 100 gold
-        if (this.canAfford(CONFIG.AQUEDUCT_COST)) {
-          this.aqueductButton.setAlpha(1);
-        } else {
-          this.aqueductButton.setAlpha(0.6);
-        }
-      } else if (this.aqueductButtonState === 'upgrade') {
-        // Upgrade state - check if can afford 150 gold
-        if (this.canAfford(CONFIG.AQUEDUCT_UPGRADE_COST)) {
-          this.aqueductButton.setAlpha(1);
-        } else {
-          this.aqueductButton.setAlpha(0.6);
-        }
-      } else if (this.aqueductButtonState === 'upgraded') {
-        // Fully upgraded - grey out
-        this.aqueductButton.setAlpha(0.5);
-      }
-    }
-    
+
     // Update spell button cooldown displays with radial overlay
     if (this.spellButtons) {
-      Object.entries(this.spellButtons).forEach(([spellKey, spellButton]) => {
+      for (const spellKey in this.spellButtons) {
+        const spellButton = this.spellButtons[spellKey];
         const cooldown = this.spellCooldowns[spellKey] || 0;
         const maxCooldown = this.getSpellMaxCooldown(spellKey);
-        
+
         if (cooldown > 0 && maxCooldown > 0) {
-          // Draw radial cooldown overlay
           this.drawRadialCooldown(spellButton, cooldown, maxCooldown);
           spellButton.button.setAlpha(0.5);
         } else {
-          // Clear cooldown display
           spellButton.cooldownOverlay.clear();
           spellButton.cooldownOverlay.setVisible(false);
           spellButton.cooldownText.setVisible(false);
-          
-          const cost = this.getSpellCost(spellKey);
-          spellButton.button.setAlpha(this.mana >= cost ? 1 : 0.5);
         }
-      });
+      }
     }
-    
-    // Update upgrade button states with checkmarks
+
+    // --- Slow path: affordability + upgrade checks (throttled) ---
+    if (time === undefined || time - this._lastAffordabilityUpdate < this._affordabilityInterval) return;
+    this._lastAffordabilityUpdate = time;
+
+    this.unitButtons.forEach(({ key, button }) => {
+      const config = CONFIG.UNITS[key] || CONFIG.VIKING_UNITS[key] || CONFIG.ALIEN_UNITS[key];
+      const onCooldown = this.unitCooldowns[key] > 0;
+      const disabled = this.disableTraining || (this.disableWorkers && key === 'worker');
+      if (!disabled && !onCooldown) {
+        button.setAlpha(this.canAfford(config.cost) ? 1 : 0.5);
+      }
+    });
+
+    if (this.spellButtons) {
+      for (const spellKey in this.spellButtons) {
+        const cooldown = this.spellCooldowns[spellKey] || 0;
+        if (cooldown <= 0) {
+          const cost = this.getSpellCost(spellKey);
+          this.spellButtons[spellKey].button.setAlpha(this.mana >= cost ? 1 : 0.5);
+        }
+      }
+    }
+
+    if (this.aqueductButton) {
+      if (this.aqueductButtonState === 'build') {
+        this.aqueductButton.setAlpha(this.canAfford(CONFIG.AQUEDUCT_COST) ? 1 : 0.6);
+      } else if (this.aqueductButtonState === 'upgrade') {
+        this.aqueductButton.setAlpha(this.canAfford(CONFIG.AQUEDUCT_UPGRADE_COST) ? 1 : 0.6);
+      } else if (this.aqueductButtonState === 'upgraded') {
+        this.aqueductButton.setAlpha(0.5);
+      }
+    }
+
     if (this.upgradeButtons) {
       const checkUpgradeBtn = (key, purchased, cost) => {
         const btn = this.upgradeButtons[key];
@@ -6712,8 +6662,7 @@ export class GameScene extends Phaser.Scene {
       checkUpgradeBtn('alien_exoskeleton', this.alienUpgrades.exoskeleton, CONFIG.ALIEN_UPGRADES.exoskeleton.cost);
       checkUpgradeBtn('alien_plasmaInfusion', this.alienUpgrades.plasmaInfusion, CONFIG.ALIEN_UPGRADES.plasmaInfusion.cost);
     }
-    
-    // Update aqueduct upgrade state
+
     if (this.aqueductButtonState === 'upgrade' && this.aqueduct) {
       this.aqueductIcon.setText('⬆️');
       this.aqueductCostText.setText('150');

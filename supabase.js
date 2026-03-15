@@ -135,32 +135,33 @@ export async function getLeaderboard(gameMode = null, limit = 20) {
 
 export async function updatePlayerStats(won, faction, timeSeconds, kills) {
   try {
+    const factionWinKey = `${faction}_wins`;
     const { data: existing } = await supabase
       .from('player_stats')
-      .select('*')
+      .select('total_games, total_wins, total_kills, total_playtime_seconds, roman_wins, viking_wins, alien_wins')
       .eq('session_id', sessionId)
       .maybeSingle();
 
-    const factionWinKey = `${faction}_wins`;
-
     if (existing) {
-      const updates = {
-        total_games: existing.total_games + 1,
-        total_wins: existing.total_wins + (won ? 1 : 0),
-        total_kills: existing.total_kills + kills,
-        total_playtime_seconds: existing.total_playtime_seconds + Math.floor(timeSeconds),
-        updated_at: new Date().toISOString(),
-        [factionWinKey]: (existing[factionWinKey] || 0) + (won ? 1 : 0),
-      };
-
-      const maxWins = Math.max(updates.roman_wins || 0, updates.viking_wins || 0, updates.alien_wins || 0);
-      if (maxWins === updates.roman_wins) updates.favorite_faction = 'roman';
-      else if (maxWins === updates.viking_wins) updates.favorite_faction = 'viking';
-      else updates.favorite_faction = 'alien';
+      const romanWins = (existing.roman_wins || 0) + (faction === 'roman' && won ? 1 : 0);
+      const vikingWins = (existing.viking_wins || 0) + (faction === 'viking' && won ? 1 : 0);
+      const alienWins = (existing.alien_wins || 0) + (faction === 'alien' && won ? 1 : 0);
+      const maxWins = Math.max(romanWins, vikingWins, alienWins);
+      const favFaction = maxWins === romanWins ? 'roman' : maxWins === vikingWins ? 'viking' : 'alien';
 
       const { error } = await supabase
         .from('player_stats')
-        .update(updates)
+        .update({
+          total_games: existing.total_games + 1,
+          total_wins: existing.total_wins + (won ? 1 : 0),
+          total_kills: existing.total_kills + kills,
+          total_playtime_seconds: existing.total_playtime_seconds + Math.floor(timeSeconds),
+          roman_wins: romanWins,
+          viking_wins: vikingWins,
+          alien_wins: alienWins,
+          favorite_faction: favFaction,
+          updated_at: new Date().toISOString(),
+        })
         .eq('session_id', sessionId);
       if (error) console.warn('updatePlayerStats update error:', error.message);
     } else {

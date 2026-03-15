@@ -52,7 +52,8 @@ export class Unit extends Phaser.GameObjects.Container {
     // Animation state
     this.walkPhase = Math.random() * Math.PI * 2; // Random start phase for variety
     this.idlePhase = Math.random() * Math.PI * 2;
-    
+    this._lastAuraCheck = 0;
+
     // Start idle bobbing animation
     this.startIdleAnimation();
   }
@@ -163,8 +164,11 @@ export class Unit extends Phaser.GameObjects.Container {
   update(time, delta) {
     if (this.isDead) return;
 
-    // Apply aura bonuses every frame (cheap since we check nearby units)
-    this.applyAuraEffects();
+    // Apply aura bonuses at most every 200ms (O(n²) cost mitigation)
+    if (time - this._lastAuraCheck >= 200) {
+      this._lastAuraCheck = time;
+      this.applyAuraEffects();
+    }
 
     // Check for targets
     const enemies = this.isEnemy ? this.scene.playerUnits : this.scene.enemyUnits;

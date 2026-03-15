@@ -1,4 +1,3 @@
-import Phaser from 'phaser';
 import * as Tone from 'tone';
 import { CONFIG } from './config.js';
 import { Unit } from './Unit.js';
@@ -7,42 +6,15 @@ import { Harvester } from './Harvester.js';
 import { Thrall } from './Thrall.js';
 import { Base } from './Base.js';
 import { GoldMine } from './GoldMine.js';
+import { BaseGameScene } from './BaseGameScene.js';
 
-export class MultiplayerGameScene extends Phaser.Scene {
+export class MultiplayerGameScene extends BaseGameScene {
   constructor() {
     super({ key: 'MultiplayerGameScene' });
   }
   
   preload() {
-    // Load all assets (same as GameScene)
-    this.load.image('sky', 'https://rosebud.ai/assets/purple-sky-background.webp?764C');
-    this.load.image('mountains', 'https://rosebud.ai/assets/mountains-layer.webp?hr6l');
-    this.load.image('ground', 'https://rosebud.ai/assets/ground-terrain.webp?y66d');
-    
-    this.load.image('player-castle', 'https://rosebud.ai/assets/player-castle.webp?v688');
-    this.load.image('alien-base', 'https://rosebud.ai/assets/alien-base.webp?YyOt');
-    this.load.image('viking-base', 'https://rosebud.ai/assets/viking-base.webp?TXvW');
-    
-    this.load.image('worker', 'https://rosebud.ai/assets/worker-unit.webp?J01Z');
-    this.load.image('legionary', 'https://rosebud.ai/assets/legionary-unit.webp?qjIO');
-    this.load.image('pilum', 'https://rosebud.ai/assets/pilum-thrower-unit.webp?T3tA');
-    this.load.image('centurion', 'https://rosebud.ai/assets/centurion-unit.webp?DAva');
-    this.load.image('scout', 'https://rosebud.ai/assets/scout-unit.webp?YOqf');
-    
-    this.load.image('harvester', 'https://rosebud.ai/assets/harvester-unit.webp?Rn3x');
-    this.load.image('alien-scout', 'https://rosebud.ai/assets/alien-scout-unit.webp?fkPM');
-    this.load.image('drone', 'https://rosebud.ai/assets/drone-unit.webp?15fr');
-    this.load.image('blaster', 'https://rosebud.ai/assets/blaster-unit.webp?jDED');
-    this.load.image('overlord', 'https://rosebud.ai/assets/overlord-unit.webp?htbf');
-    
-    this.load.image('thrall', 'https://rosebud.ai/assets/thrall-unit.webp?KkBj');
-    this.load.image('berserker', 'https://rosebud.ai/assets/berserker-unit.webp?J07Q');
-    this.load.image('axeThrower', 'https://rosebud.ai/assets/axe-thrower-unit.webp?IyG2');
-    this.load.image('jarl', 'https://rosebud.ai/assets/jarl-unit.webp?QY82');
-    
-    this.load.image('gold-mine', 'https://rosebud.ai/assets/gold-mine.webp?zSoi');
-    this.load.image('alien-mine', 'https://rosebud.ai/assets/alien-mine.webp?qbWt');
-    this.load.image('viking-mine', 'https://rosebud.ai/assets/viking-mine.webp?SnGW');
+    this.preloadGameAssets();
   }
   
   create() {
@@ -637,40 +609,36 @@ export class MultiplayerGameScene extends Phaser.Scene {
     this.player1ManaText.setText(`${Math.floor(this.player1.mana)}`);
     this.player2ManaText.setText(`${Math.floor(this.player2.mana)}`);
     
-    // Update cooldowns
-    Object.keys(this.player1.cooldowns).forEach(key => {
-      if (this.player1.cooldowns[key] > 0) {
-        this.player1.cooldowns[key] -= delta;
-      }
-    });
-    
-    Object.keys(this.player2.cooldowns).forEach(key => {
-      if (this.player2.cooldowns[key] > 0) {
-        this.player2.cooldowns[key] -= delta;
-      }
-    });
-    
-    // Update units
-    this.player1.units = this.player1.units.filter(u => !u.isDead);
-    this.player2.units = this.player2.units.filter(u => !u.isDead);
-    
-    this.player1.units.forEach(unit => {
-      // Set enemies for targeting
-      unit.scene.playerUnits = this.player1.units;
-      unit.scene.enemyUnits = this.player2.units;
-      unit.scene.playerBase = this.player1Base;
-      unit.scene.enemyBase = this.player2Base;
-      unit.update(time, delta);
-    });
-    
-    this.player2.units.forEach(unit => {
-      // Set enemies for targeting
-      unit.scene.playerUnits = this.player2.units;
-      unit.scene.enemyUnits = this.player1.units;
-      unit.scene.playerBase = this.player2Base;
-      unit.scene.enemyBase = this.player1Base;
-      unit.update(time, delta);
-    });
+    // Update cooldowns (for-in is faster than Object.keys+forEach)
+    const p1c = this.player1.cooldowns;
+    for (const key in p1c) { if (p1c[key] > 0) p1c[key] -= delta; }
+    const p2c = this.player2.cooldowns;
+    for (const key in p2c) { if (p2c[key] > 0) p2c[key] -= delta; }
+
+    // Remove dead units without allocating new arrays each frame
+    let w = 0;
+    for (let i = 0; i < this.player1.units.length; i++) {
+      if (!this.player1.units[i].isDead) this.player1.units[w++] = this.player1.units[i];
+    }
+    this.player1.units.length = w;
+    w = 0;
+    for (let i = 0; i < this.player2.units.length; i++) {
+      if (!this.player2.units[i].isDead) this.player2.units[w++] = this.player2.units[i];
+    }
+    this.player2.units.length = w;
+
+    // Set scene context once per group (not per unit) before updating
+    this.playerUnits = this.player1.units;
+    this.enemyUnits = this.player2.units;
+    this.playerBase = this.player1Base;
+    this.enemyBase = this.player2Base;
+    this.player1.units.forEach(unit => unit.update(time, delta));
+
+    this.playerUnits = this.player2.units;
+    this.enemyUnits = this.player1.units;
+    this.playerBase = this.player2Base;
+    this.enemyBase = this.player1Base;
+    this.player2.units.forEach(unit => unit.update(time, delta));
     
     // Update cameras (P1 controls)
     const cameraSpeed = 8;
