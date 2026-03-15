@@ -43,11 +43,13 @@ export class Unit extends Phaser.GameObjects.Container {
 
     // Sprite
     const spriteKey = this.getSpriteKey();
-    this._walkAnimKey = scene.textures.exists(`${spriteKey}_walk`) ? `${spriteKey}_walk` : null;
-    this._attackAnimKey = scene.textures.exists(`${spriteKey}_attack`) ? `${spriteKey}_attack` : null;
+    const walkTexKey = `${spriteKey}_walk`;
+    const attackTexKey = `${spriteKey}_attack`;
+    this._walkAnimKey = scene.anims.exists(walkTexKey) ? walkTexKey : null;
+    this._attackAnimKey = scene.anims.exists(attackTexKey) ? attackTexKey : null;
     this._hasSpritesheetAnims = !!this._walkAnimKey;
 
-    const initialKey = this._walkAnimKey || spriteKey;
+    const initialKey = (this._walkAnimKey && scene.textures.exists(walkTexKey)) ? walkTexKey : spriteKey;
     this.sprite = scene.add.sprite(0, 0, initialKey);
     this._baseScale = 0.15;
     this.sprite.setScale(this._baseScale);

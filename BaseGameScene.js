@@ -70,8 +70,29 @@ export class BaseGameScene extends Phaser.Scene {
       const frameConfig = (files.frameWidth && files.frameHeight)
         ? { frameWidth: files.frameWidth, frameHeight: files.frameHeight }
         : defaultFrameConfig;
-      this.load.spritesheet(`${key}_walk`, files.walk, frameConfig);
-      this.load.spritesheet(`${key}_attack`, files.attack, frameConfig);
+
+      const walkKey = `${key}_walk`;
+      const attackKey = `${key}_attack`;
+
+      if (this.textures.exists(walkKey)) {
+        const tex = this.textures.get(walkKey);
+        const firstFrame = tex.frames['0'];
+        if (!firstFrame || firstFrame.realWidth !== frameConfig.frameWidth) {
+          this.textures.remove(walkKey);
+          if (this.anims.exists(walkKey)) this.anims.remove(walkKey);
+        }
+      }
+      if (this.textures.exists(attackKey)) {
+        const tex = this.textures.get(attackKey);
+        const firstFrame = tex.frames['0'];
+        if (!firstFrame || firstFrame.realWidth !== frameConfig.frameWidth) {
+          this.textures.remove(attackKey);
+          if (this.anims.exists(attackKey)) this.anims.remove(attackKey);
+        }
+      }
+
+      this.load.spritesheet(walkKey, files.walk, frameConfig);
+      this.load.spritesheet(attackKey, files.attack, frameConfig);
     });
   }
 
