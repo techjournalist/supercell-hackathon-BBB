@@ -99,33 +99,42 @@ export class AIController {
   }
   
   updateUpgrades(time, delta) {
-    // AI upgrade purchase logic
     if (time - this.lastAIUpgradeCheck < CONFIG.AI_UPGRADE_CHECK_INTERVAL) return;
     this.lastAIUpgradeCheck = time;
-    
+
     if (this.scene.enemyGold < CONFIG.AI_UPGRADE_GOLD_THRESHOLD) return;
-    
-    // Purchase available upgrades
-    const upgrades = this.scene.alienUpgrades || {};
-    for (let key in upgrades) {
-      if (!upgrades[key] && this.scene.enemyGold >= 200) {
-        // Purchase upgrade logic
-        break;
+
+    const factionId = this.scene.enemyFactionId || 'alien';
+    const upgradeMap = factionId === 'alien' ? CONFIG.ALIEN_UPGRADES : CONFIG.VIKING_UPGRADES;
+    const purchasedMap = factionId === 'alien'
+      ? (this.scene.alienUpgrades || {})
+      : (this.scene.vikingUpgrades || {});
+
+    for (const key in upgradeMap) {
+      const upgCfg = upgradeMap[key];
+      if (!purchasedMap[key] && this.scene.enemyGold >= upgCfg.cost) {
+        this.scene.purchaseUpgrade(factionId, key);
+        return;
       }
     }
   }
-  
+
   updateScouts(time, delta) {
-    // AI scout spawning logic
     if (time - this.lastAIScoutSpawn < CONFIG.AI_SCOUT_INTERVAL) return;
-    
-    const scoutCount = this.scene.enemyUnits.filter(u => 
-      u.config.name === 'Scout'
+
+    const factionId = this.scene.enemyFactionId || 'alien';
+    const unitConfig = factionId === 'alien' ? CONFIG.ALIEN_UNITS : CONFIG.VIKING_UNITS;
+    const scoutCfg = unitConfig.scout;
+
+    const scoutCount = this.scene.enemyUnits.filter(u =>
+      !u.isDead && u.config.name === 'Scout'
     ).length;
-    
+
     if (scoutCount < CONFIG.AI_SCOUT_MAX && Math.random() < CONFIG.AI_SCOUT_CHANCE) {
-      this.lastAIScoutSpawn = time;
-      // Spawn scout logic
+      if (this.scene.enemyGold >= scoutCfg.cost) {
+        this.lastAIScoutSpawn = time;
+        this.scene.spawnEnemyUnit('scout', scoutCfg, factionId, true);
+      }
     }
   }
 }

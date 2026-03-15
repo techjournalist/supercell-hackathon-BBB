@@ -3125,32 +3125,81 @@ export class GameScene extends BaseGameScene {
     const config = CONFIG.THORS_LIGHTNING;
     soundEffects.playSpellCast();
 
-    const affectedUnits = this.enemyUnits.filter(unit => {
-      if (unit.isDead) return false;
-      return Phaser.Math.Distance.Between(x, y, unit.x, unit.y) <= 80;
-    });
+    // Find primary target — closest enemy to click within range
+    const aliveEnemies = this.enemyUnits.filter(u => !u.isDead);
+    if (aliveEnemies.length === 0) return;
 
-    const bolt = this.add.rectangle(x, y - 150, 6, 300, 0xFFFF00, 0.9);
-    bolt.setDepth(500);
-    this.tweens.add({
-      targets: bolt,
-      alpha: 0,
-      scaleX: 3,
-      duration: 400,
-      onComplete: () => bolt.destroy()
-    });
+    const primary = aliveEnemies.reduce((best, unit) => {
+      const d = Phaser.Math.Distance.Between(x, y, unit.x, unit.y);
+      if (!best || d < best.d) return { unit, d };
+      return best;
+    }, null);
 
-    affectedUnits.forEach(unit => {
-      unit.health -= config.damage;
-      if (unit.health <= 0) unit.die();
-    });
+    if (!primary || primary.d > config.range) return;
 
-    if (affectedUnits.length === 0 && this.enemyUnits.length > 0) {
-      const closest = this.enemyUnits.filter(u => !u.isDead)
-        .sort((a, b) => Phaser.Math.Distance.Between(x, y, a.x, a.y) - Phaser.Math.Distance.Between(x, y, b.x, b.y))[0];
-      if (closest) {
-        closest.health -= config.damage;
-        if (closest.health <= 0) closest.die();
+    // Draw initial bolt from sky to primary target
+    const drawLightningBolt = (fromX, fromY, toX, toY, alpha) => {
+      const bolt = this.add.graphics();
+      bolt.setDepth(500);
+      bolt.lineStyle(4, 0xFFFF88, alpha);
+      bolt.beginPath();
+      bolt.moveTo(fromX, fromY);
+      // jagged zig-zag
+      const steps = 5;
+      for (let i = 1; i < steps; i++) {
+        const t = i / steps;
+        const midX = fromX + (toX - fromX) * t + Phaser.Math.Between(-18, 18);
+        const midY = fromY + (toY - fromY) * t + Phaser.Math.Between(-12, 12);
+        bolt.lineTo(midX, midY);
+      }
+      bolt.lineTo(toX, toY);
+      bolt.strokePath();
+      this.tweens.add({ targets: bolt, alpha: 0, duration: 350, onComplete: () => bolt.destroy() });
+
+      // Impact flash
+      const flash = this.add.circle(toX, toY, 22, 0xFFFF00, 0.75);
+      flash.setDepth(501);
+      this.tweens.add({ targets: flash, alpha: 0, scaleX: 2.5, scaleY: 2.5, duration: 300, onComplete: () => flash.destroy() });
+    };
+
+    // Apply damage and chain
+    const struck = new Set();
+    let currentUnit = primary.unit;
+    let currentDamage = config.damage;
+
+    for (let chain = 0; chain < config.chainCount; chain++) {
+      if (!currentUnit || currentUnit.isDead) break;
+      struck.add(currentUnit);
+
+      const fromX = chain === 0 ? x : currentUnit.prevX || currentUnit.x;
+      const fromY = chain === 0 ? y - 180 : currentUnit.prevY || currentUnit.y;
+
+      drawLightningBolt(fromX, fromY, currentUnit.x, currentUnit.y, 1 - chain * 0.25);
+
+      currentUnit.health -= currentDamage;
+      if (currentUnit.health <= 0) currentUnit.die();
+
+      // Find next chain target
+      if (chain < config.chainCount - 1) {
+        const nextDamage = currentDamage * config.chainDamageMult;
+        let nextTarget = null;
+        let nextDist = Infinity;
+
+        for (const candidate of aliveEnemies) {
+          if (struck.has(candidate) || candidate.isDead) continue;
+          const d = Phaser.Math.Distance.Between(currentUnit.x, currentUnit.y, candidate.x, candidate.y);
+          if (d < config.chainRange && d < nextDist) {
+            nextDist = d;
+            nextTarget = candidate;
+          }
+        }
+
+        if (nextTarget) {
+          nextTarget.prevX = currentUnit.x;
+          nextTarget.prevY = currentUnit.y;
+        }
+        currentDamage = nextDamage;
+        currentUnit = nextTarget;
       }
     }
   }
@@ -3175,7 +3224,8 @@ export class GameScene extends BaseGameScene {
 
     affectedUnits.forEach(unit => {
       const origSpeed = unit.attackSpeed;
-      unit.attackSpeed = Math.floor(unit.attackSpeed * (1 - config.attackSpeedBonus));
+      // attackSpeed is ms between attacks: divide by (1 + bonus) to make attacks faster
+      unit.attackSpeed = Math.floor(unit.attackSpeed / (1 + config.attackSpeedBonus));
       this.time.delayedCall(config.duration, () => {
         if (!unit.isDead) unit.attackSpeed = origSpeed;
       });
@@ -3203,9 +3253,19 @@ export class GameScene extends BaseGameScene {
 
     affectedUnits.forEach(unit => {
       const origDmgReduce = unit.damageReduction || 0;
-      unit.damageReduction = 0.4;
+      unit.damageReduction = config.damageReduction !== undefined ? config.damageReduction : 0.4;
+      unit.frostSlowActive = true;
+      unit.frostSlowAmount = config.slowAmount || 0.4;
+      // Ice tint visual on protected unit
+      const iceRing = this.add.circle(unit.x, unit.y, 28, 0x44DDFF, 0.3);
+      iceRing.setDepth(15);
+      this.tweens.add({ targets: iceRing, alpha: 0, duration: config.duration, onComplete: () => iceRing.destroy() });
       this.time.delayedCall(config.duration, () => {
-        if (!unit.isDead) unit.damageReduction = origDmgReduce;
+        if (!unit.isDead) {
+          unit.damageReduction = origDmgReduce;
+          unit.frostSlowActive = false;
+          unit.frostSlowAmount = 0;
+        }
       });
     });
   }
@@ -3579,15 +3639,12 @@ export class GameScene extends BaseGameScene {
       this.enemyUnits.push(targetUnit);
     }
     
-    // After duration, unit dies
+    // After duration, unit dies (guard against unit dying during control)
     this.time.delayedCall(config.duration, () => {
+      try { antenna.destroy(); } catch {}
+      try { antennaBulb.destroy(); } catch {}
+      try { eyeGlow.destroy(); } catch {}
       if (!targetUnit.isDead) {
-        // Remove mind control visuals
-        antenna.destroy();
-        antennaBulb.destroy();
-        eyeGlow.destroy();
-        
-        // Unit dies from mind control
         targetUnit.health = 0;
         targetUnit.die();
       }
@@ -5303,7 +5360,23 @@ export class GameScene extends BaseGameScene {
     }
   }
   
-  spawnEnemyUnit() {
+  spawnEnemyUnit(unitKey, unitConfig, factionId, isScout) {
+    // Direct spawn when called from AIController with specific unit
+    if (unitKey && unitConfig) {
+      if (this.enemyGold < unitConfig.cost) return;
+      this.enemyGold -= unitConfig.cost;
+      const unit = new Unit(this, CONFIG.ENEMY_BASE_X - 150, this.groundY - 40, unitConfig, true);
+      if (isScout) {
+        unit.isAIScout = true;
+        unit.scoutingPhase = 'explore';
+      }
+      this.enemyUnits.push(unit);
+      this.applyUpgradeBonuses(unit, factionId || 'alien');
+      unit.setScale(0);
+      this.tweens.add({ targets: unit, scale: 1, duration: 200, ease: 'Back.easeOut' });
+      return;
+    }
+
     // Skirmish AI strategy phases
     if (this.skirmishDifficulty) {
       return this.skirmishAISpawn();
@@ -5311,11 +5384,7 @@ export class GameScene extends BaseGameScene {
     
     // Count current workers
     const workerCount = this.enemyUnits.filter(u => !u.isDead && u.isWorker).length;
-    
-    // Apply cloning vats cooldown reduction to alien spawns
-    const cooldownMultiplier = this.alienUpgrades.cloningVats ? 
-      (1 - CONFIG.ALIEN_UPGRADES.cloningVats.cooldownReduction) : 1;
-    
+
     // AI prioritizes maintaining worker count
     if (workerCount < CONFIG.AI_MIN_WORKERS || Math.random() < CONFIG.AI_WORKER_PRIORITY) {
       const harvesterConfig = CONFIG.ALIEN_UNITS.harvester;
@@ -6380,25 +6449,26 @@ export class GameScene extends BaseGameScene {
       }
     }
     
-    // Try to cast Mind Control on expensive player units
+    // Try to cast Mind Control on the highest-threat player unit in range
     if (this.alienSpellCooldowns.mindControl <= 0 && this.enemyMana >= CONFIG.MIND_CONTROL.cost) {
-      const expensiveUnits = this.playerUnits.filter(unit => {
+      const candidates = this.playerUnits.filter(unit => {
         if (unit.isDead || unit.mindControlled || unit.isWorker) return false;
-        // Target Centurions (200 gold), Pilum Throwers (100 gold)
         return unit.config.cost >= CONFIG.AI_MIND_CONTROL_MIN_COST;
       });
-      
-      if (expensiveUnits.length > 0) {
-        // Pick the most expensive unit closest to the front
-        const target = expensiveUnits.reduce((best, unit) => {
-          if (!best) return unit;
-          // Prefer units further right (closer to alien base)
-          if (unit.x > best.x) return unit;
-          // Or more expensive units
-          if (unit.config.cost > best.config.cost) return unit;
-          return best;
+
+      if (candidates.length > 0) {
+        // Score each candidate: high damage + close to enemy base + high HP remaining = top priority
+        const target = candidates.reduce((best, unit) => {
+          const unitScore = (unit.damage || 0) * 2
+            + unit.config.cost / 10
+            + (unit.x / CONFIG.WORLD_WIDTH) * 50  // further right = more threatening
+            + (unit.health / unit.maxHealth) * 20;  // prefer healthy units (more control time)
+          const bestScore = best
+            ? (best.damage || 0) * 2 + best.config.cost / 10 + (best.x / CONFIG.WORLD_WIDTH) * 50 + (best.health / best.maxHealth) * 20
+            : -Infinity;
+          return unitScore > bestScore ? unit : best;
         }, null);
-        
+
         if (target) {
           this.enemyMana -= CONFIG.MIND_CONTROL.cost;
           this.alienSpellCooldowns.mindControl = CONFIG.MIND_CONTROL.cooldown;

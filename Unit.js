@@ -620,7 +620,7 @@ export class Unit extends Phaser.GameObjects.Container {
         if (this.target && !this.target.isDead) {
           const base = this.getEffectiveDamage();
           const final = this.calculateRangedDamage(base, distToTarget);
-          this.target.takeDamage(final, this.x, this.y);
+          this.target.takeDamage(final, this.x, this.y, this);
           this.playAttackSound();
         }
       },
@@ -646,7 +646,7 @@ export class Unit extends Phaser.GameObjects.Container {
     }
   }
   
-  takeDamage(amount, fromX, fromY) {
+  takeDamage(amount, fromX, fromY, attacker) {
     if (this.isDead) return;
 
     let finalDamage = amount;
@@ -659,6 +659,28 @@ export class Unit extends Phaser.GameObjects.Container {
       finalDamage *= (1 - this.damageReduction);
     }
     finalDamage = Math.max(1, finalDamage);
+
+    // Frost Shield slow: chill the attacker
+    if (this.frostSlowActive && attacker && !attacker.isDead && !attacker._frostSlowed) {
+      const slowAmount = this.frostSlowAmount || 0.4;
+      attacker._frostSlowed = true;
+      const origSpeed = attacker.speed;
+      const origAttackSpeed = attacker.attackSpeed;
+      attacker.speed = Math.floor(origSpeed * (1 - slowAmount));
+      attacker.attackSpeed = Math.floor(origAttackSpeed / (1 - slowAmount * 0.5));
+      // Show ice particle on attacker
+      const iceFlash = this.scene.add.circle(attacker.x, attacker.y, 18, 0x88EEFF, 0.5);
+      iceFlash.setDepth(200);
+      this.scene.tweens.add({ targets: iceFlash, alpha: 0, duration: 500, onComplete: () => iceFlash.destroy() });
+      // Unslow after 1.5s
+      this.scene.time.delayedCall(1500, () => {
+        if (!attacker.isDead) {
+          attacker.speed = origSpeed;
+          attacker.attackSpeed = origAttackSpeed;
+        }
+        attacker._frostSlowed = false;
+      });
+    }
 
     this.health -= finalDamage;
     

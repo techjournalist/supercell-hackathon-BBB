@@ -52,12 +52,12 @@ export const CONFIG = {
       health: 220,
       damage: 27,
       attackRange: 110,
-      attackSpeed: 1100,  // slightly faster - was 1200
+      attackSpeed: 1100,
       speed: 52,
       cost: 200,
-      cooldown: 7000,     // was 8000 - more viable
-      auraRadius: 150,    // buffs nearby allies
-      auraBonus: 0.1,     // +10% damage to allies in range
+      cooldown: 7000,
+      auraRadius: 250,    // raised from 150: wide enough to cover a real formation
+      auraBonus: 0.2,     // raised from 0.1: +20% damage is meaningful at 200g cost
     },
     scout: {
       name: 'Scout',
@@ -118,15 +118,15 @@ export const CONFIG = {
     },
     overlord: {
       name: 'Overlord',
-      health: 200,        // was 180 - stronger tank
+      health: 200,
       damage: 30,
       attackRange: 120,
       attackSpeed: 1200,
       speed: 48,
       cost: 225,
-      cooldown: 8500,     // was 9000 - slightly more viable
-      auraRadius: 130,
-      auraBonus: 0.08,    // +8% damage to nearby alien units
+      cooldown: 8500,
+      auraRadius: 240,    // raised from 130 to match centurion
+      auraBonus: 0.18,    // raised from 0.08: meaningful for 225g unit
     }
   },
 
@@ -167,38 +167,38 @@ export const CONFIG = {
     },
     jarl: {
       name: 'Jarl',
-      health: 210,        // was 190 - slightly tankier
-      damage: 30,         // was 28 - slightly stronger
+      health: 210,
+      damage: 30,
       attackRange: 115,
-      attackSpeed: 1300,  // was 1400 - faster
+      attackSpeed: 1300,
       speed: 52,
       cost: 210,
-      cooldown: 7500,     // was 8000 - more viable
-      auraRadius: 150,
-      auraBonus: 0.12,    // +12% damage to nearby viking units
+      cooldown: 7500,
+      auraRadius: 250,    // raised from 150 to match centurion
+      auraBonus: 0.2,     // raised from 0.12: consistent with other commander units
     }
   },
 
   // Resources
-  STARTING_GOLD: 120,     // was 100 - slightly more initial gold
-  STARTING_MANA: 20,      // was 50 - reduced; mana now trickles in passively
+  STARTING_GOLD: 150,     // raised from 120: faster opening, first worker + unit sooner
+  STARTING_MANA: 40,      // raised from 20: can cast 1 spell immediately on first engagement
   MAX_MANA: 200,
-  PASSIVE_MANA_REGEN: 0.5, // mana per second all factions get passively
+  PASSIVE_MANA_REGEN: 1.2, // raised from 0.5: meaningful passive trickle (~17s/spell at no structures)
 
   // Mana structures
   AQUEDUCT_COST: 100,
-  AQUEDUCT_MANA_RATE: 2.5,  // was 2 - slightly improved
+  AQUEDUCT_MANA_RATE: 4,    // raised from 2.5: 1 aqueduct gives comfortable spell rhythm
   AQUEDUCT_UPGRADE_COST: 150,
-  AQUEDUCT_UPGRADED_RATE: 5,  // was 4 - improved to justify upgrade cost
+  AQUEDUCT_UPGRADED_RATE: 7, // raised from 5: upgrade is a real power spike
 
   // Probe Beam (Alien mana ability)
   PROBE_BEAM_COOLDOWN: 4000,  // was 5000 - more responsive
 
   // Viking mana system (Odin's Blessing)
   ODINS_BLESSING_COST: 100,
-  ODINS_BLESSING_MANA_RATE: 3,
+  ODINS_BLESSING_MANA_RATE: 4,       // raised from 3 to match aqueduct
   ODINS_BLESSING_UPGRADE_COST: 150,
-  ODINS_BLESSING_UPGRADED_RATE: 5.5,  // was 5 - slight improvement
+  ODINS_BLESSING_UPGRADED_RATE: 7,   // raised from 5.5 to match aqueduct upgrade
 
   // Roman Spells
   SHIELD_WALL: {
@@ -256,10 +256,11 @@ export const CONFIG = {
   },
   FROST_SHIELD: {
     cost: 30,
-    cooldown: 15000,      // was 16000
-    duration: 4000,       // was 3000 - longer protection
-    radius: 160,          // was 150 - wider
-    slowAmount: 0.4,      // NEW: also slows attackers by 40%
+    cooldown: 15000,
+    duration: 4000,
+    radius: 160,
+    damageReduction: 0.35,  // 35% damage reduction on protected units
+    slowAmount: 0.4,        // 40% speed/attack slow on attackers who hit shielded units
   },
 
   // Upgrades
@@ -319,8 +320,8 @@ export const CONFIG = {
 
   // Mining
   MINE_OFFSET_FROM_BASE: 300,
-  MINING_TIME: 3000,
-  GOLD_PER_TRIP: 30,
+  MINING_TIME: 2500,   // reduced from 3000: slightly snappier mining feel
+  GOLD_PER_TRIP: 35,   // raised from 30: less grind, more decisions
   WORKER_FLEE_DISTANCE: 220,    // was 200 - flee a bit earlier
 
   // Rally Point
