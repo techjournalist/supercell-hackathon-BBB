@@ -805,6 +805,264 @@ export class Unit extends Phaser.GameObjects.Container {
     }
   }
 
+  getMeleeWeaponType() {
+    const name = this.config.name;
+    if (this.factionId === 'viking') {
+      if (name === 'Berserker' || name === 'Jarl') return 'viking_heavy';
+      return 'viking_light';
+    }
+    if (this.factionId === 'alien') return 'alien_claw';
+    return 'roman_sword';
+  }
+
+  spawnMeleeSlash(targetX, targetY) {
+    const weaponType = this.getMeleeWeaponType();
+    const swingDir = this.isEnemy ? -1 : 1;
+
+    if (weaponType === 'roman_sword') {
+      this.spawnSwordSlash(swingDir);
+    } else if (weaponType === 'viking_heavy') {
+      this.spawnAxeSmash(swingDir, true);
+    } else if (weaponType === 'viking_light') {
+      this.spawnAxeSmash(swingDir, false);
+    } else if (weaponType === 'alien_claw') {
+      this.spawnClawSwipe(targetX, targetY);
+    }
+  }
+
+  spawnSwordSlash(swingDir) {
+    const gfx = this.scene.add.graphics();
+    gfx.setDepth(20);
+
+    const cx = this.x + swingDir * 20;
+    const cy = this.y - 10;
+    const radius = 32;
+    const startAngle = swingDir === 1
+      ? Phaser.Math.DegToRad(-60)
+      : Phaser.Math.DegToRad(120);
+    const endAngle = swingDir === 1
+      ? Phaser.Math.DegToRad(60)
+      : Phaser.Math.DegToRad(240);
+
+    const drawSlash = (progress) => {
+      gfx.clear();
+      const alpha = (1 - progress) * 0.85;
+
+      gfx.lineStyle(5, 0xFFFFFF, alpha * 0.4);
+      gfx.beginPath();
+      gfx.arc(cx, cy, radius + 4, startAngle, startAngle + (endAngle - startAngle) * progress, false);
+      gfx.strokePath();
+
+      gfx.lineStyle(2.5, 0xE8E8FF, alpha);
+      gfx.beginPath();
+      gfx.arc(cx, cy, radius, startAngle, startAngle + (endAngle - startAngle) * progress, false);
+      gfx.strokePath();
+
+      gfx.lineStyle(1, 0xFFFFFF, alpha * 0.6);
+      gfx.beginPath();
+      gfx.arc(cx, cy, radius - 5, startAngle, startAngle + (endAngle - startAngle) * progress, false);
+      gfx.strokePath();
+
+      if (progress > 0.3) {
+        const tipAngle = startAngle + (endAngle - startAngle) * progress;
+        const tipX = cx + Math.cos(tipAngle) * radius;
+        const tipY = cy + Math.sin(tipAngle) * radius;
+        gfx.fillStyle(0xFFFFFF, alpha * 0.9);
+        gfx.fillCircle(tipX, tipY, 3);
+      }
+    };
+
+    this.scene.tweens.addCounter({
+      from: 0, to: 1,
+      duration: 200,
+      ease: 'Cubic.easeOut',
+      onUpdate: (tween) => drawSlash(tween.getValue()),
+      onComplete: () => gfx.destroy()
+    });
+
+    const trailLine = this.scene.add.graphics();
+    trailLine.setDepth(19);
+    this.scene.time.delayedCall(60, () => {
+      const trailAngle = startAngle + (endAngle - startAngle) * 0.4;
+      const tx1 = cx + Math.cos(trailAngle) * (radius - 8);
+      const ty1 = cy + Math.sin(trailAngle) * (radius - 8);
+      const tx2 = cx + Math.cos(trailAngle) * (radius + 8);
+      const ty2 = cy + Math.sin(trailAngle) * (radius + 8);
+      trailLine.lineStyle(1.5, 0xCCCCFF, 0.5);
+      trailLine.beginPath();
+      trailLine.moveTo(tx1, ty1);
+      trailLine.lineTo(tx2, ty2);
+      trailLine.strokePath();
+      this.scene.tweens.add({
+        targets: trailLine,
+        alpha: 0,
+        duration: 120,
+        onComplete: () => trailLine.destroy()
+      });
+    });
+  }
+
+  spawnAxeSmash(swingDir, heavy) {
+    const gfx = this.scene.add.graphics();
+    gfx.setDepth(20);
+
+    const cx = this.x + swingDir * 18;
+    const cy = this.y - 5;
+    const radius = heavy ? 42 : 30;
+    const outerColor = heavy ? 0xFF6600 : 0xFF8C00;
+    const innerColor = heavy ? 0xFFDD00 : 0xFFAA00;
+    const arcSpan = heavy ? Phaser.Math.DegToRad(90) : Phaser.Math.DegToRad(70);
+    const startAngle = swingDir === 1
+      ? Phaser.Math.DegToRad(-80)
+      : Phaser.Math.DegToRad(100);
+    const endAngle = startAngle + arcSpan;
+
+    const drawSmash = (progress) => {
+      gfx.clear();
+      const alpha = (1 - progress) * 0.9;
+      const thicknessOuter = heavy ? 7 : 5;
+      const thicknessInner = heavy ? 3.5 : 2.5;
+
+      gfx.lineStyle(thicknessOuter, outerColor, alpha * 0.5);
+      gfx.beginPath();
+      gfx.arc(cx, cy, radius + 5, startAngle, startAngle + (endAngle - startAngle) * progress, false);
+      gfx.strokePath();
+
+      gfx.lineStyle(thicknessInner, innerColor, alpha);
+      gfx.beginPath();
+      gfx.arc(cx, cy, radius, startAngle, startAngle + (endAngle - startAngle) * progress, false);
+      gfx.strokePath();
+
+      if (progress > 0.5) {
+        const impactAngle = startAngle + (endAngle - startAngle) * progress;
+        const impX = cx + Math.cos(impactAngle) * radius;
+        const impY = cy + Math.sin(impactAngle) * radius;
+        const sparkAlpha = (1 - progress) * alpha * 1.5;
+        for (let i = 0; i < (heavy ? 3 : 2); i++) {
+          const sAngle = impactAngle + (i - 1) * Phaser.Math.DegToRad(25);
+          const sLen = heavy ? 14 : 10;
+          gfx.lineStyle(1.5, 0xFFFFAA, sparkAlpha);
+          gfx.beginPath();
+          gfx.moveTo(impX, impY);
+          gfx.lineTo(impX + Math.cos(sAngle) * sLen, impY + Math.sin(sAngle) * sLen);
+          gfx.strokePath();
+        }
+      }
+    };
+
+    const duration = heavy ? 220 : 170;
+    this.scene.tweens.addCounter({
+      from: 0, to: 1,
+      duration,
+      ease: 'Cubic.easeOut',
+      onUpdate: (tween) => drawSmash(tween.getValue()),
+      onComplete: () => gfx.destroy()
+    });
+
+    if (heavy) {
+      const dustX = this.x + swingDir * 36;
+      const dustY = this.y + 10;
+      for (let i = 0; i < 4; i++) {
+        const dust = this.scene.add.circle(
+          dustX + Phaser.Math.Between(-8, 8),
+          dustY,
+          Phaser.Math.Between(4, 8),
+          0xBB8844,
+          0.55
+        );
+        dust.setDepth(18);
+        this.scene.tweens.add({
+          targets: dust,
+          x: dust.x + swingDir * Phaser.Math.Between(10, 22),
+          y: dust.y - Phaser.Math.Between(8, 18),
+          alpha: 0,
+          scaleX: 2,
+          scaleY: 2,
+          duration: 280,
+          ease: 'Power2',
+          delay: i * 30,
+          onComplete: () => dust.destroy()
+        });
+      }
+
+      if (this.scene.cameras && this.scene.cameras.main) {
+        this.scene.cameras.main.shake(50, 0.0025);
+      }
+    }
+  }
+
+  spawnClawSwipe(targetX, targetY) {
+    const swingDir = this.isEnemy ? -1 : 1;
+    const cx = this.x + swingDir * 16;
+    const cy = this.y - 8;
+    const clawLen = 34;
+    const baseAngle = swingDir === 1 ? 0 : Math.PI;
+
+    const clawOffsets = [-Phaser.Math.DegToRad(22), 0, Phaser.Math.DegToRad(22)];
+    const clawColors = [0x00FF88, 0x44FFAA, 0x00FF88];
+    const clawWidths = [1.5, 2.5, 1.5];
+    const graphics = [];
+
+    clawOffsets.forEach((offset, i) => {
+      const gfx = this.scene.add.graphics();
+      gfx.setDepth(20);
+      graphics.push(gfx);
+
+      const angle = baseAngle + offset;
+      const ex = cx + Math.cos(angle) * clawLen;
+      const ey = cy + Math.sin(angle) * clawLen;
+
+      const drawClaw = (progress) => {
+        gfx.clear();
+        const alpha = progress < 0.7 ? progress / 0.7 : (1 - progress) / 0.3;
+        gfx.lineStyle(clawWidths[i] + 3, 0x004422, alpha * 0.25);
+        gfx.beginPath();
+        gfx.moveTo(cx, cy);
+        gfx.lineTo(cx + (ex - cx) * Math.min(1, progress * 1.4), cy + (ey - cy) * Math.min(1, progress * 1.4));
+        gfx.strokePath();
+
+        gfx.lineStyle(clawWidths[i], clawColors[i], alpha * 0.9);
+        gfx.beginPath();
+        gfx.moveTo(cx, cy);
+        gfx.lineTo(cx + (ex - cx) * Math.min(1, progress * 1.4), cy + (ey - cy) * Math.min(1, progress * 1.4));
+        gfx.strokePath();
+      };
+
+      this.scene.tweens.addCounter({
+        from: 0, to: 1,
+        duration: 200,
+        ease: 'Cubic.easeOut',
+        delay: i * 18,
+        onUpdate: (tween) => drawClaw(tween.getValue()),
+        onComplete: () => gfx.destroy()
+      });
+    });
+
+    this.scene.time.delayedCall(160, () => {
+      const splatterX = cx + swingDir * (clawLen * 0.8);
+      const splatterY = cy;
+      for (let i = 0; i < 3; i++) {
+        const dot = this.scene.add.circle(
+          splatterX + Phaser.Math.Between(-10, 10),
+          splatterY + Phaser.Math.Between(-8, 8),
+          Phaser.Math.Between(2, 4),
+          0x00DD66,
+          0.75
+        );
+        dot.setDepth(21);
+        this.scene.tweens.add({
+          targets: dot,
+          x: dot.x + Phaser.Math.Between(-12, 12),
+          y: dot.y + Phaser.Math.Between(4, 14),
+          alpha: 0,
+          duration: 250,
+          ease: 'Power2',
+          onComplete: () => dot.destroy()
+        });
+      }
+    });
+  }
+
   attack() {
     if (!this.target || this.target.isDead || this.isAttacking) return;
 
@@ -823,6 +1081,8 @@ export class Unit extends Phaser.GameObjects.Container {
 
     if (this.isRangedUnit()) {
       this.fireProjectile(targetX, targetY);
+    } else {
+      this.spawnMeleeSlash(targetX, targetY);
     }
 
     this.scene.tweens.add({
