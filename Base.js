@@ -221,7 +221,7 @@ export class Base extends Phaser.GameObjects.Container {
         this.scene.registry.set('vikingCampaignProgress', newProgress);
         console.log('VIKING campaign progress saved:', newProgress);
         campaignType = 'viking';
-        if (this.scene.campaignLevel === 8) {
+        if (this.scene.campaignLevel === 6) {
           campaignComplete = true;
         }
       } else if (this.scene.alienCampaign) {
@@ -230,7 +230,7 @@ export class Base extends Phaser.GameObjects.Container {
         this.scene.registry.set('alienCampaignProgress', newProgress);
         console.log('ALIEN campaign progress saved:', newProgress);
         campaignType = 'alien';
-        if (this.scene.alienLevel === 8) {
+        if (this.scene.alienLevel === 6) {
           campaignComplete = true;
         }
       } else {

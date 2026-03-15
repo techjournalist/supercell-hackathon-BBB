@@ -8,6 +8,7 @@ import { stateManager } from './StateManager.js';
 import { Unit } from './Unit.js';
 import { Worker } from './Worker.js';
 import { Harvester } from './Harvester.js';
+import { Thrall } from './Thrall.js';
 import { Base } from './Base.js';
 import { GoldMine } from './GoldMine.js';
 import { Minimap } from './Minimap.js';
@@ -116,6 +117,7 @@ export class GameScene extends Phaser.Scene {
     this.alienLevel = this.registry.get('alienLevel');
     this.skirmishDifficulty = this.registry.get('skirmishDifficulty');
     this.challengeMode = this.registry.get('challengeMode');
+    this.selectedFaction = this.registry.get('selectedFaction') || this.registry.get('playerFaction') || 'roman';
     
     // Calculate ground level
     this.groundY = height * 0.75;
@@ -166,9 +168,14 @@ export class GameScene extends Phaser.Scene {
       shieldWall: 0,
       rainOfPila: 0,
       healingSpring: 0,
+      thorLightning: 0,
+      battleRage: 0,
+      frostShield: 0,
+      mindControl: 0,
+      plasmaBomb: 0,
     };
     this.activeSpell = null;  // Currently selected spell waiting for target
-    
+
     // Alien spell cooldowns (AI only)
     this.alienSpellCooldowns = {
       mindControl: 0,
@@ -188,14 +195,20 @@ export class GameScene extends Phaser.Scene {
       exoskeleton: false,
       warpDrive: false,
     };
+
+    this.vikingUpgrades = {
+      ironForging: false,
+      shieldWallTraining: false,
+      meadHall: false,
+    };
     
     this.lastAIUpgradeCheck = 0;
     
-    // Spawn cooldowns
+    // Spawn cooldowns - initialize for all factions
     this.unitCooldowns = {};
-    Object.keys(CONFIG.UNITS).forEach(key => {
-      this.unitCooldowns[key] = 0;
-    });
+    Object.keys(CONFIG.UNITS).forEach(key => { this.unitCooldowns[key] = 0; });
+    Object.keys(CONFIG.VIKING_UNITS).forEach(key => { this.unitCooldowns[key] = 0; });
+    Object.keys(CONFIG.ALIEN_UNITS).forEach(key => { this.unitCooldowns[key] = 0; });
     
     // AI scout tracking
     this.lastAIScoutSpawn = 0;
@@ -442,25 +455,42 @@ export class GameScene extends Phaser.Scene {
   }
   
   createBases() {
-    // Player base (left side) - Roman castle
+    let playerSprite = 'player-castle';
+    let enemySprite = 'alien-base';
+
+    if (this.vikingCampaign) {
+      playerSprite = 'viking-base';
+      enemySprite = 'alien-base';
+    } else if (this.alienCampaign) {
+      playerSprite = 'alien-base';
+      enemySprite = 'player-castle';
+    } else if (this.skirmishDifficulty || this.challengeMode) {
+      if (this.selectedFaction === 'viking') {
+        playerSprite = 'viking-base';
+        enemySprite = 'alien-base';
+      } else if (this.selectedFaction === 'alien') {
+        playerSprite = 'alien-base';
+        enemySprite = 'player-castle';
+      }
+    }
+
     this.playerBase = new Base(
       this,
       CONFIG.PLAYER_BASE_X,
       this.groundY - CONFIG.BASE_Y_OFFSET,
       false,
-      'player-castle'
+      playerSprite
     );
-    this.playerBase.setDepth(10); // Above ground (depth 2) and background
-    
-    // Enemy base (right side) - Alien crashed saucer
+    this.playerBase.setDepth(10);
+
     this.enemyBase = new Base(
       this,
       CONFIG.ENEMY_BASE_X,
       this.groundY - CONFIG.BASE_Y_OFFSET,
       true,
-      'alien-base'
+      enemySprite
     );
-    this.enemyBase.setDepth(10); // Above ground (depth 2) and background
+    this.enemyBase.setDepth(10);
   }
   
   createGoldMines() {
@@ -944,22 +974,38 @@ export class GameScene extends Phaser.Scene {
     this.createTooltip();
     
     // UNIT TRAINING BUTTONS
-    const units = Object.entries(CONFIG.UNITS);
+    let unitConfig;
+    if (this.vikingCampaign) {
+      unitConfig = CONFIG.VIKING_UNITS;
+    } else if (this.alienCampaign) {
+      unitConfig = CONFIG.ALIEN_UNITS;
+    } else {
+      unitConfig = CONFIG.UNITS;
+    }
+    const units = Object.entries(unitConfig);
     units.forEach(([key, config], index) => {
       const x = currentX + (buttonSize / 2) + index * (buttonSize + spacing);
-      
+
       const button = this.add.rectangle(x, centerY, buttonSize, buttonSize, 0x2C2C2C);
       button.setInteractive({ useHandCursor: true });
       button.setStrokeStyle(2, 0x555555);
       button.setScrollFactor(0);
       button.setDepth(101);
-      
-      // Simple icon (emoji or first letter)
+
       let iconKey;
       if (key === 'worker') iconKey = 'worker';
       else if (key === 'legionary') iconKey = 'legionary';
       else if (key === 'pilum') iconKey = 'pilum';
       else if (key === 'centurion') iconKey = 'centurion';
+      else if (key === 'scout') iconKey = 'scout';
+      else if (key === 'thrall') iconKey = 'thrall';
+      else if (key === 'berserker') iconKey = 'berserker';
+      else if (key === 'axeThrower') iconKey = 'axeThrower';
+      else if (key === 'jarl') iconKey = 'jarl';
+      else if (key === 'harvester') iconKey = 'harvester';
+      else if (key === 'drone') iconKey = 'drone';
+      else if (key === 'blaster') iconKey = 'blaster';
+      else if (key === 'overlord') iconKey = 'overlord';
       
       const icon = this.add.sprite(x, centerY - 5, iconKey);
       icon.setScale(0.06);
@@ -1032,32 +1078,55 @@ export class GameScene extends Phaser.Scene {
     divider2.setDepth(101);
     currentX += 15;
     
-    // SPELL BUTTONS (3 Roman spells)
-    this.createSpellButton(currentX, centerY, buttonSize, 'shieldWall', '🛡️', CONFIG.SHIELD_WALL.cost, 0xFFD700);
-    currentX += buttonSize + spacing;
-    
-    this.createSpellButton(currentX, centerY, buttonSize, 'rainOfPila', '⚔️', CONFIG.RAIN_OF_PILA.cost, 0xFF6600);
-    currentX += buttonSize + spacing;
-    
-    this.createSpellButton(currentX, centerY, buttonSize, 'healingSpring', '💧', CONFIG.HEALING_SPRING.cost, 0x00CED1);
-    currentX += buttonSize + spacing + 15;
-    
+    // SPELL BUTTONS - faction-aware
+    if (this.vikingCampaign) {
+      this.createSpellButton(currentX, centerY, buttonSize, 'thorLightning', '⚡', CONFIG.THORS_LIGHTNING.cost, 0xFFD700);
+      currentX += buttonSize + spacing;
+      this.createSpellButton(currentX, centerY, buttonSize, 'battleRage', '🪓', CONFIG.BATTLE_RAGE.cost, 0xFF4400);
+      currentX += buttonSize + spacing;
+      this.createSpellButton(currentX, centerY, buttonSize, 'frostShield', '❄️', CONFIG.FROST_SHIELD.cost, 0x44DDFF);
+      currentX += buttonSize + spacing + 15;
+    } else if (this.alienCampaign) {
+      this.createSpellButton(currentX, centerY, buttonSize, 'mindControl', '🧠', CONFIG.MIND_CONTROL.cost, 0x00FF88);
+      currentX += buttonSize + spacing;
+      this.createSpellButton(currentX, centerY, buttonSize, 'plasmaBomb', '💥', CONFIG.PLASMA_BOMB.cost, 0xFF6600);
+      currentX += buttonSize + spacing + 15;
+    } else {
+      this.createSpellButton(currentX, centerY, buttonSize, 'shieldWall', '🛡️', CONFIG.SHIELD_WALL.cost, 0xFFD700);
+      currentX += buttonSize + spacing;
+      this.createSpellButton(currentX, centerY, buttonSize, 'rainOfPila', '⚔️', CONFIG.RAIN_OF_PILA.cost, 0xFF6600);
+      currentX += buttonSize + spacing;
+      this.createSpellButton(currentX, centerY, buttonSize, 'healingSpring', '💧', CONFIG.HEALING_SPRING.cost, 0x00CED1);
+      currentX += buttonSize + spacing + 15;
+    }
+
     // DIVIDER
     const divider3 = this.add.rectangle(currentX, centerY, 2, 50, 0x666666);
     divider3.setScrollFactor(0);
     divider3.setDepth(101);
     currentX += 15;
-    
-    // UPGRADE BUTTONS (Roman + Aqueduct)
-    this.createUpgradeButton(currentX, centerY, buttonSize, 'roman', 'armor', '🛡️', CONFIG.ROMAN_UPGRADES.armor.cost);
-    currentX += buttonSize + spacing;
-    
-    this.createUpgradeButton(currentX, centerY, buttonSize, 'roman', 'weapon', '⚔️', CONFIG.ROMAN_UPGRADES.weapon.cost);
-    currentX += buttonSize + spacing;
-    
-    // Aqueduct button
-    this.createAqueductButton(currentX, centerY, buttonSize);
-    currentX += buttonSize + spacing + 15;
+
+    // UPGRADE BUTTONS - faction-aware
+    if (this.vikingCampaign) {
+      this.createUpgradeButton(currentX, centerY, buttonSize, 'viking', 'ironForging', '🔨', CONFIG.VIKING_UPGRADES.ironForging.cost);
+      currentX += buttonSize + spacing;
+      this.createUpgradeButton(currentX, centerY, buttonSize, 'viking', 'shieldWallTraining', '🛡️', CONFIG.VIKING_UPGRADES.shieldWallTraining.cost);
+      currentX += buttonSize + spacing;
+      this.createOdinsBlessingButton(currentX, centerY, buttonSize);
+      currentX += buttonSize + spacing + 15;
+    } else if (this.alienCampaign) {
+      this.createUpgradeButton(currentX, centerY, buttonSize, 'alien', 'exoskeleton', '🦾', CONFIG.ALIEN_UPGRADES.exoskeleton.cost);
+      currentX += buttonSize + spacing;
+      this.createUpgradeButton(currentX, centerY, buttonSize, 'alien', 'plasmaInfusion', '⚡', CONFIG.ALIEN_UPGRADES.plasmaInfusion.cost);
+      currentX += buttonSize + spacing;
+    } else {
+      this.createUpgradeButton(currentX, centerY, buttonSize, 'roman', 'armor', '🛡️', CONFIG.ROMAN_UPGRADES.armor.cost);
+      currentX += buttonSize + spacing;
+      this.createUpgradeButton(currentX, centerY, buttonSize, 'roman', 'weapon', '⚔️', CONFIG.ROMAN_UPGRADES.weapon.cost);
+      currentX += buttonSize + spacing;
+      this.createAqueductButton(currentX, centerY, buttonSize);
+      currentX += buttonSize + spacing + 15;
+    }
     
     // RIGHT SIDE - CONTROL BUTTONS
     const rightX = width - 150;
@@ -1195,7 +1264,7 @@ export class GameScene extends Phaser.Scene {
     
     button.on('pointerover', () => {
       soundEffects.playButtonHover();
-      const upgrades = faction === 'roman' ? this.romanUpgrades : this.alienUpgrades;
+      const upgrades = faction === 'roman' ? this.romanUpgrades : (faction === 'viking' ? this.vikingUpgrades : this.alienUpgrades);
       if (!upgrades[upgradeKey] && this.canAfford(cost)) {
         button.setFillStyle(0x3C3C3C);
       }
@@ -1261,7 +1330,56 @@ export class GameScene extends Phaser.Scene {
       this.hideTooltip();
     });
   }
-  
+
+  createOdinsBlessingButton(x, y, size) {
+    this.odinsBlessingButton = this.add.rectangle(x, y, size, size, 0x2C2C2C);
+    this.odinsBlessingButton.setInteractive({ useHandCursor: true });
+    this.odinsBlessingButton.setStrokeStyle(2, 0xFFD700);
+    this.odinsBlessingButton.setScrollFactor(0);
+    this.odinsBlessingButton.setDepth(101);
+
+    this.odinsBlessingIcon = this.add.text(x, y - 8, '🌩️', { fontSize: '20px' });
+    this.odinsBlessingIcon.setOrigin(0.5);
+    this.odinsBlessingIcon.setScrollFactor(0);
+    this.odinsBlessingIcon.setDepth(102);
+
+    this.odinsBlessingCostText = this.add.text(x, y + 17, `${CONFIG.ODINS_BLESSING_COST}`, {
+      fontSize: '10px',
+      fontFamily: 'Press Start 2P',
+      color: '#FFD700',
+      stroke: '#000000',
+      strokeThickness: 2,
+    });
+    this.odinsBlessingCostText.setOrigin(0.5);
+    this.odinsBlessingCostText.setScrollFactor(0);
+    this.odinsBlessingCostText.setDepth(102);
+
+    this.odinsBlessingButton.on('pointerdown', () => {
+      soundEffects.playButtonClick();
+      this.buildOdinsBlessing();
+    });
+
+    this.odinsBlessingButton.on('pointerover', () => {
+      soundEffects.playButtonHover();
+      this.showTooltip(x, y + 35, "Odin's Blessing\nGenerates +3 mana per second.\nSacred Norse altar.\n\nCost: " + CONFIG.ODINS_BLESSING_COST + " gold\nClick to build");
+    });
+
+    this.odinsBlessingButton.on('pointerout', () => {
+      this.odinsBlessingButton.setFillStyle(0x2C2C2C);
+      this.hideTooltip();
+    });
+  }
+
+  buildOdinsBlessing() {
+    if (this.odinsBlessing || !this.canAfford(CONFIG.ODINS_BLESSING_COST)) return;
+    this.gold -= CONFIG.ODINS_BLESSING_COST;
+    this.odinsBlessing = true;
+    this.odinsManaRate = CONFIG.ODINS_BLESSING_MANA_RATE;
+    if (this.odinsBlessingIcon) this.odinsBlessingIcon.setText('✓');
+    if (this.odinsBlessingCostText) this.odinsBlessingCostText.setVisible(false);
+    if (this.odinsBlessingButton) this.odinsBlessingButton.setAlpha(0.5);
+  }
+
   createControlButtonsCompact(startX, centerY, buttonSize, spacing) {
     // Speed toggle
     const speedX = startX;
@@ -2506,12 +2624,32 @@ export class GameScene extends Phaser.Scene {
           cost: 175,
         },
       },
+      viking: {
+        ironForging: {
+          name: 'Iron Forging',
+          desc: 'Better forged weapons.\n+20% damage for all units.',
+          cost: 200,
+        },
+        shieldWallTraining: {
+          name: 'Shield Wall Training',
+          desc: 'Advanced defensive training.\n+20% HP for all units.',
+          cost: 200,
+        },
+        meadHall: {
+          name: 'Mead Hall',
+          desc: 'Feast before battle.\n+15% movement speed.',
+          cost: 175,
+        },
+      },
     };
-    
+
     const upgrade = upgrades[faction]?.[upgradeKey];
     if (!upgrade) return '';
-    
-    const purchased = faction === 'roman' ? this.romanUpgrades[upgradeKey] : this.alienUpgrades[upgradeKey];
+
+    let purchased;
+    if (faction === 'roman') purchased = this.romanUpgrades[upgradeKey];
+    else if (faction === 'viking') purchased = this.vikingUpgrades[upgradeKey];
+    else purchased = this.alienUpgrades[upgradeKey];
     
     let text = `${upgrade.name}\n`;
     text += `${upgrade.desc}\n\n`;
@@ -2600,30 +2738,34 @@ export class GameScene extends Phaser.Scene {
   }
   
   purchaseUpgrade(faction, upgradeKey) {
-    const upgrades = faction === 'roman' ? this.romanUpgrades : this.alienUpgrades;
-    const config = faction === 'roman' ? CONFIG.ROMAN_UPGRADES[upgradeKey] : CONFIG.ALIEN_UPGRADES[upgradeKey];
-    
-    // Check if already purchased
+    let upgrades, configSource, goldSource, units;
+    if (faction === 'roman') {
+      upgrades = this.romanUpgrades;
+      configSource = CONFIG.ROMAN_UPGRADES[upgradeKey];
+      goldSource = 'gold';
+      units = this.playerUnits;
+    } else if (faction === 'viking') {
+      upgrades = this.vikingUpgrades;
+      configSource = CONFIG.VIKING_UPGRADES[upgradeKey];
+      goldSource = 'gold';
+      units = this.playerUnits;
+    } else {
+      upgrades = this.alienUpgrades;
+      configSource = CONFIG.ALIEN_UPGRADES[upgradeKey];
+      goldSource = 'enemyGold';
+      units = this.enemyUnits;
+    }
+
+    if (!configSource) return;
     if (upgrades[upgradeKey]) return;
-    
-    // Check if can afford
-    const goldSource = faction === 'roman' ? 'gold' : 'enemyGold';
-    if (this[goldSource] < config.cost) return;
-    
-    // Deduct cost
-    this[goldSource] -= config.cost;
-    
-    // Mark as purchased
+    if (this[goldSource] < configSource.cost) return;
+
+    this[goldSource] -= configSource.cost;
     upgrades[upgradeKey] = true;
-    
-    // Apply bonuses to all existing units
-    const units = faction === 'roman' ? this.playerUnits : this.enemyUnits;
+
     units.forEach(unit => {
       this.applyUpgradeBonuses(unit, faction);
     });
-    
-    // Update button to show checkmark (handled in updateButtonStates)
-    // The checkmark visibility is toggled based on the upgrade state
   }
   
   applyUpgradeBonuses(unit, faction) {
@@ -2637,13 +2779,41 @@ export class GameScene extends Phaser.Scene {
           unit.armorApplied = true;
         }
       }
-      
+
       // Weapon Upgrade: +20% attack
       if (this.romanUpgrades.weapon) {
         const damageBonus = CONFIG.ROMAN_UPGRADES.weapon.damageBonus;
         if (!unit.weaponApplied) {
           unit.damage = Math.floor(unit.damage * (1 + damageBonus));
           unit.weaponApplied = true;
+        }
+      }
+    } else if (faction === 'viking') {
+      // Iron Forging: +20% damage
+      if (this.vikingUpgrades.ironForging) {
+        const damageBonus = CONFIG.VIKING_UPGRADES.ironForging.damageBonus;
+        if (!unit.ironForgingApplied) {
+          unit.damage = Math.floor(unit.damage * (1 + damageBonus));
+          unit.ironForgingApplied = true;
+        }
+      }
+
+      // Shield Wall Training: +20% HP
+      if (this.vikingUpgrades.shieldWallTraining) {
+        const hpBonus = CONFIG.VIKING_UPGRADES.shieldWallTraining.hpBonus;
+        if (!unit.shieldWallApplied) {
+          unit.maxHealth = Math.floor(unit.maxHealth * (1 + hpBonus));
+          unit.health = Math.floor(unit.health * (1 + hpBonus));
+          unit.shieldWallApplied = true;
+        }
+      }
+
+      // Mead Hall: +15% speed
+      if (this.vikingUpgrades.meadHall) {
+        const speedBonus = CONFIG.VIKING_UPGRADES.meadHall.speedBonus;
+        if (!unit.meadHallApplied) {
+          unit.speed = Math.floor(unit.speed * (1 + speedBonus));
+          unit.meadHallApplied = true;
         }
       }
     } else {
@@ -2788,7 +2958,7 @@ export class GameScene extends Phaser.Scene {
   
   castSpell(spellName, x, y) {
     let spellConfig;
-    
+
     if (spellName === 'shieldWall') {
       spellConfig = CONFIG.SHIELD_WALL;
       this.castShieldWall(x, y);
@@ -2798,14 +2968,141 @@ export class GameScene extends Phaser.Scene {
     } else if (spellName === 'healingSpring') {
       spellConfig = CONFIG.HEALING_SPRING;
       this.castHealingSpring(x, y);
+    } else if (spellName === 'thorLightning') {
+      spellConfig = CONFIG.THORS_LIGHTNING;
+      this.castThorLightning(x, y);
+    } else if (spellName === 'battleRage') {
+      spellConfig = CONFIG.BATTLE_RAGE;
+      this.castBattleRage(x, y);
+    } else if (spellName === 'frostShield') {
+      spellConfig = CONFIG.FROST_SHIELD;
+      this.castFrostShield(x, y);
+    } else if (spellName === 'mindControl') {
+      const target = this.findClosestEnemyUnit(x, y, CONFIG.MIND_CONTROL.range);
+      if (!target) return;
+      spellConfig = CONFIG.MIND_CONTROL;
+      this.castMindControl(target);
+    } else if (spellName === 'plasmaBomb') {
+      spellConfig = CONFIG.PLASMA_BOMB;
+      this.castPlasmaBomb(x, y);
     }
-    
+
+    if (!spellConfig) return;
+
     // Track stat
     this.stats.spellsCast++;
-    
+
+    // Track viking_spells objective
+    if (this.campaignObjective === 'viking_spells') {
+      this.spellsCastCount = (this.spellsCastCount || 0) + 1;
+    }
+
     // Deduct mana and start cooldown
     this.mana -= spellConfig.cost;
     this.spellCooldowns[spellName] = spellConfig.cooldown;
+  }
+
+  findClosestEnemyUnit(x, y, range) {
+    let closest = null;
+    let closestDist = range;
+    this.enemyUnits.forEach(unit => {
+      if (unit.isDead) return;
+      const dist = Phaser.Math.Distance.Between(x, y, unit.x, unit.y);
+      if (dist < closestDist) {
+        closestDist = dist;
+        closest = unit;
+      }
+    });
+    return closest;
+  }
+
+  castThorLightning(x, y) {
+    const config = CONFIG.THORS_LIGHTNING;
+    soundEffects.playSpellCast();
+
+    const affectedUnits = this.enemyUnits.filter(unit => {
+      if (unit.isDead) return false;
+      return Phaser.Math.Distance.Between(x, y, unit.x, unit.y) <= 80;
+    });
+
+    const bolt = this.add.rectangle(x, y - 150, 6, 300, 0xFFFF00, 0.9);
+    bolt.setDepth(500);
+    this.tweens.add({
+      targets: bolt,
+      alpha: 0,
+      scaleX: 3,
+      duration: 400,
+      onComplete: () => bolt.destroy()
+    });
+
+    affectedUnits.forEach(unit => {
+      unit.health -= config.damage;
+      if (unit.health <= 0) unit.die();
+    });
+
+    if (affectedUnits.length === 0 && this.enemyUnits.length > 0) {
+      const closest = this.enemyUnits.filter(u => !u.isDead)
+        .sort((a, b) => Phaser.Math.Distance.Between(x, y, a.x, a.y) - Phaser.Math.Distance.Between(x, y, b.x, b.y))[0];
+      if (closest) {
+        closest.health -= config.damage;
+        if (closest.health <= 0) closest.die();
+      }
+    }
+  }
+
+  castBattleRage(x, y) {
+    const config = CONFIG.BATTLE_RAGE;
+    soundEffects.playSpellCast();
+
+    const affectedUnits = this.playerUnits.filter(unit => {
+      if (unit.isDead) return false;
+      return Phaser.Math.Distance.Between(x, y, unit.x, unit.y) <= config.radius;
+    });
+
+    const circle = this.add.circle(x, y, config.radius, 0xFF4400, 0.25);
+    circle.setDepth(10);
+    this.tweens.add({
+      targets: circle,
+      alpha: 0,
+      duration: config.duration,
+      onComplete: () => circle.destroy()
+    });
+
+    affectedUnits.forEach(unit => {
+      const origSpeed = unit.attackSpeed;
+      unit.attackSpeed = Math.floor(unit.attackSpeed * (1 - config.attackSpeedBonus));
+      this.time.delayedCall(config.duration, () => {
+        if (!unit.isDead) unit.attackSpeed = origSpeed;
+      });
+    });
+  }
+
+  castFrostShield(x, y) {
+    const config = CONFIG.FROST_SHIELD;
+    soundEffects.playSpellCast();
+
+    const affectedUnits = this.playerUnits.filter(unit => {
+      if (unit.isDead) return false;
+      return Phaser.Math.Distance.Between(x, y, unit.x, unit.y) <= config.radius;
+    });
+
+    const circle = this.add.circle(x, y, config.radius, 0x44DDFF, 0.25);
+    circle.setStrokeStyle(3, 0x44DDFF);
+    circle.setDepth(10);
+    this.tweens.add({
+      targets: circle,
+      alpha: 0,
+      duration: config.duration,
+      onComplete: () => circle.destroy()
+    });
+
+    affectedUnits.forEach(unit => {
+      const origDmgReduce = unit.damageReduction || 0;
+      unit.damageReduction = 0.4;
+      this.time.delayedCall(config.duration, () => {
+        if (!unit.isDead) unit.damageReduction = origDmgReduce;
+      });
+    });
   }
   
   castShieldWall(x, y) {
@@ -3394,31 +3691,58 @@ export class GameScene extends Phaser.Scene {
   
   spawnInitialUnits() {
     let offset = 0;
-    
-    // Spawn player workers
-    for (let i = 0; i < CONFIG.INITIAL_PLAYER_WORKERS; i++) {
-      const worker = new Worker(
-        this,
-        CONFIG.PLAYER_BASE_X + 150 + (offset * 80),
-        this.groundY - 40,
-        CONFIG.UNITS.worker,
-        false
-      );
-      this.playerUnits.push(worker);
-      offset++;
-    }
-    
-    // Spawn player legionaries
-    for (let i = 0; i < CONFIG.INITIAL_PLAYER_LEGIONARIES; i++) {
-      const unit = new Unit(
-        this,
-        CONFIG.PLAYER_BASE_X + 150 + (offset * 80),
-        this.groundY - 40,
-        CONFIG.UNITS.legionary,
-        false
-      );
-      this.playerUnits.push(unit);
-      offset++;
+
+    if (this.vikingCampaign) {
+      // Spawn player thralls (miners)
+      for (let i = 0; i < CONFIG.INITIAL_PLAYER_WORKERS; i++) {
+        const thrall = new Thrall(
+          this,
+          CONFIG.PLAYER_BASE_X + 150 + (offset * 80),
+          this.groundY - 40,
+          CONFIG.VIKING_UNITS.thrall,
+          false
+        );
+        this.playerUnits.push(thrall);
+        offset++;
+      }
+      // Spawn player berserkers
+      for (let i = 0; i < CONFIG.INITIAL_PLAYER_LEGIONARIES; i++) {
+        const unit = new Unit(
+          this,
+          CONFIG.PLAYER_BASE_X + 150 + (offset * 80),
+          this.groundY - 40,
+          CONFIG.VIKING_UNITS.berserker,
+          false
+        );
+        this.playerUnits.push(unit);
+        offset++;
+      }
+    } else {
+      // Spawn player workers
+      for (let i = 0; i < CONFIG.INITIAL_PLAYER_WORKERS; i++) {
+        const worker = new Worker(
+          this,
+          CONFIG.PLAYER_BASE_X + 150 + (offset * 80),
+          this.groundY - 40,
+          CONFIG.UNITS.worker,
+          false
+        );
+        this.playerUnits.push(worker);
+        offset++;
+      }
+
+      // Spawn player legionaries
+      for (let i = 0; i < CONFIG.INITIAL_PLAYER_LEGIONARIES; i++) {
+        const unit = new Unit(
+          this,
+          CONFIG.PLAYER_BASE_X + 150 + (offset * 80),
+          this.groundY - 40,
+          CONFIG.UNITS.legionary,
+          false
+        );
+        this.playerUnits.push(unit);
+        offset++;
+      }
     }
     
     // Reset offset for enemy
@@ -3575,9 +3899,6 @@ export class GameScene extends Phaser.Scene {
       this.playerUnits = [];
       this.enemyUnits = [];
     };
-    
-    // Import Thrall for Viking campaign
-    const { Thrall } = require('./Thrall.js');
     
     switch(this.campaignLevel) {
       case 1: // Raiding Party - Tutorial
@@ -4263,6 +4584,113 @@ export class GameScene extends Phaser.Scene {
     });
   }
   
+  createVikingTutorialArrows() {
+    const { width } = this.scale;
+    this.tutorialArrows = [];
+    this.tutorialPhase = 'thralls';
+
+    const messageBox = this.add.rectangle(width / 2, 120, 720, 80, 0x1a0a00, 0.95);
+    messageBox.setStrokeStyle(4, 0xCC6600);
+    messageBox.setScrollFactor(0);
+    messageBox.setDepth(999);
+    this.tutorialArrows.push(messageBox);
+
+    const messageText = this.add.text(width / 2, 120,
+      'By Odin! Click the THRALL button to gather resources.', {
+      fontSize: '16px',
+      fontFamily: 'Arial',
+      color: '#FFD700',
+      stroke: '#000000',
+      strokeThickness: 3,
+      align: 'center',
+      lineSpacing: 5
+    });
+    messageText.setOrigin(0.5);
+    messageText.setScrollFactor(0);
+    messageText.setDepth(1000);
+    this.tutorialArrows.push(messageText);
+    this.tutorialMessageText = messageText;
+
+    const thrallArrow = this.add.text(95, 80, '⬇', {
+      fontSize: '48px',
+      color: '#FF8800'
+    });
+    thrallArrow.setScrollFactor(0);
+    thrallArrow.setDepth(1000);
+    thrallArrow.setOrigin(0.5);
+    this.tutorialArrows.push(thrallArrow);
+    this.tutorialArrow = thrallArrow;
+
+    const progressText = this.add.text(95, 140, '0/2', {
+      fontSize: '16px',
+      fontFamily: 'Arial',
+      color: '#FF8800',
+      stroke: '#000000',
+      strokeThickness: 3
+    });
+    progressText.setOrigin(0.5);
+    progressText.setScrollFactor(0);
+    progressText.setDepth(1000);
+    this.tutorialArrows.push(progressText);
+    this.tutorialProgressText = progressText;
+
+    this.tweens.add({
+      targets: thrallArrow,
+      y: '+=10',
+      duration: 500,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut'
+    });
+  }
+
+  updateVikingTutorialArrows() {
+    if (!this.tutorialArrows || !this.tutorialSteps) return;
+
+    if (this.tutorialPhase === 'thralls') {
+      const current = this.tutorialSteps.thralls.current;
+      const needed = this.tutorialSteps.thralls.needed;
+
+      if (this.tutorialProgressText) {
+        this.tutorialProgressText.setText(`${current}/${needed}`);
+      }
+
+      if (current >= needed) {
+        this.tutorialPhase = 'berserkers';
+        if (this.tutorialMessageText) {
+          this.tutorialMessageText.setText('Thralls gathered! Now train BERSERKERS to fight!');
+        }
+        if (this.tutorialArrow) {
+          this.tutorialArrow.setX(185);
+        }
+        if (this.tutorialProgressText) {
+          this.tutorialProgressText.setX(185);
+          this.tutorialProgressText.setText(`0/${this.tutorialSteps.berserkers.needed}`);
+        }
+      }
+    } else if (this.tutorialPhase === 'berserkers') {
+      const current = this.tutorialSteps.berserkers.current;
+      const needed = this.tutorialSteps.berserkers.needed;
+
+      if (this.tutorialProgressText) {
+        this.tutorialProgressText.setText(`${current}/${needed}`);
+      }
+
+      if (current >= needed && !this.campaignComplete) {
+        this.campaignComplete = true;
+        if (this.tutorialMessageText) {
+          this.tutorialMessageText.setText('For Valhalla! Tutorial complete!');
+        }
+        if (this.tutorialArrow) {
+          this.tutorialArrow.setVisible(false);
+        }
+        if (this.tutorialProgressText) {
+          this.tutorialProgressText.setVisible(false);
+        }
+      }
+    }
+  }
+
   updateTutorialArrows() {
     if (!this.tutorialArrows || !this.tutorialSteps) return;
     
@@ -4557,6 +4985,22 @@ export class GameScene extends Phaser.Scene {
         config,
         false
       );
+    } else if (unitKey === 'thrall') {
+      unit = new Thrall(
+        this,
+        CONFIG.PLAYER_BASE_X + 150,
+        this.groundY - 40,
+        config,
+        false
+      );
+    } else if (unitKey === 'harvester') {
+      unit = new Harvester(
+        this,
+        CONFIG.PLAYER_BASE_X + 150,
+        this.groundY - 40,
+        config,
+        false
+      );
     } else {
       unit = new Unit(
         this,
@@ -4566,15 +5010,15 @@ export class GameScene extends Phaser.Scene {
         false
       );
     }
-    
+
     this.playerUnits.push(unit);
-    
+
     // Play unit trained sound
     soundEffects.playUnitTrained();
-    
+
     // Track stat
     this.stats.unitsTrained++;
-    
+
     // Track tutorial progress
     if (this.campaignObjective === 'tutorial' && this.tutorialSteps) {
       if (unitKey === 'worker') {
@@ -4583,7 +5027,7 @@ export class GameScene extends Phaser.Scene {
         this.tutorialSteps.legionaries.current++;
       }
     }
-    
+
     // Track alien tutorial progress
     if (this.campaignObjective === 'alien_tutorial' && this.tutorialSteps) {
       if (unitKey === 'harvester') {
@@ -4592,9 +5036,21 @@ export class GameScene extends Phaser.Scene {
         this.tutorialSteps.drones.current++;
       }
     }
-    
-    // Apply upgrades to new unit
-    this.applyUpgradeBonuses(unit, 'roman');
+
+    // Track viking tutorial progress
+    if (this.campaignObjective === 'viking_tutorial' && this.tutorialSteps) {
+      if (unitKey === 'thrall') {
+        this.tutorialSteps.thralls.current++;
+      } else if (unitKey === 'berserker') {
+        this.tutorialSteps.berserkers.current++;
+      }
+    }
+
+    // Apply upgrades to new unit - faction-aware
+    let faction = 'roman';
+    if (this.vikingCampaign) faction = 'viking';
+    else if (this.alienCampaign) faction = 'alien';
+    this.applyUpgradeBonuses(unit, faction);
     
     // Spawn animation
     unit.setScale(0);
@@ -4865,6 +5321,20 @@ export class GameScene extends Phaser.Scene {
         }
         break;
         
+      case 'viking_tutorial':
+        this.updateVikingTutorialArrows();
+        if (this.campaignComplete && !this.levelCompleted) {
+          this.levelCompleted = true;
+          const newProgress = this.campaignLevel + 1;
+          localStorage.setItem('vikingCampaignProgress', newProgress.toString());
+          this.registry.set('vikingCampaignProgress', newProgress);
+          console.log('VIKING tutorial complete, saved:', newProgress);
+          this.time.delayedCall(1000, () => {
+            this.gameOver(true);
+          });
+        }
+        break;
+
       case 'alien_tutorial':
         this.updateAlienTutorialArrows();
         if (this.campaignComplete && !this.levelCompleted) {
@@ -5007,9 +5477,9 @@ export class GameScene extends Phaser.Scene {
         
       case 'cast_spells':
         // Check if all spells cast
-        if (this.spellsCastThisLevel.lightning && 
-            this.spellsCastThisLevel.heal && 
-            this.spellsCastThisLevel.boost && 
+        if (this.spellsCastThisLevel.lightning &&
+            this.spellsCastThisLevel.heal &&
+            this.spellsCastThisLevel.boost &&
             !this.campaignComplete) {
           this.campaignComplete = true;
           // Save progress directly here
@@ -5019,6 +5489,37 @@ export class GameScene extends Phaser.Scene {
             localStorage.setItem('campaignProgress', newProgress.toString());
             this.registry.set('campaignProgress', newProgress);
             console.log('ROMAN spell mastery complete, saved:', newProgress);
+          }
+          this.time.delayedCall(1000, () => {
+            this.gameOver(true);
+          });
+        }
+        break;
+
+      case 'viking_spells':
+        // Show spell cast counter
+        if (!this.vikingSpellsText) {
+          const { width } = this.scale;
+          this.vikingSpellsText = this.add.text(width / 2, 100, '', {
+            fontSize: '22px',
+            fontFamily: 'Press Start 2P',
+            color: '#FFD700',
+            stroke: '#000000',
+            strokeThickness: 4
+          });
+          this.vikingSpellsText.setOrigin(0.5);
+          this.vikingSpellsText.setScrollFactor(0);
+          this.vikingSpellsText.setDepth(1000);
+        }
+        this.vikingSpellsText.setText(`Spells Cast: ${this.spellsCastCount || 0}/${this.spellsCastRequired}`);
+        if ((this.spellsCastCount || 0) >= this.spellsCastRequired && !this.campaignComplete) {
+          this.campaignComplete = true;
+          if (!this.levelCompleted) {
+            this.levelCompleted = true;
+            const newProgress = this.campaignLevel + 1;
+            localStorage.setItem('vikingCampaignProgress', newProgress.toString());
+            this.registry.set('vikingCampaignProgress', newProgress);
+            console.log('VIKING spell mastery complete, saved:', newProgress);
           }
           this.time.delayedCall(1000, () => {
             this.gameOver(true);
@@ -5499,6 +6000,11 @@ export class GameScene extends Phaser.Scene {
       }
     }
     
+    // Generate mana from Odin's Blessing (Viking)
+    if (this.odinsBlessing && this.odinsManaRate) {
+      this.mana = Math.min(CONFIG.MAX_MANA, this.mana + this.odinsManaRate * (scaledDelta / 1000));
+    }
+
     // Generate mana from aqueduct
     if (this.aqueduct) {
       const manaGain = this.aqueduct.getManaRate() * (scaledDelta / 1000);
@@ -5892,7 +6398,7 @@ export class GameScene extends Phaser.Scene {
   updateButtonStates() {
     // Update unit buttons with progress fill
     this.unitButtons.forEach(({ key, button, progressFill, maxCooldown }) => {
-      const config = CONFIG.UNITS[key];
+      const config = CONFIG.UNITS[key] || CONFIG.VIKING_UNITS[key] || CONFIG.ALIEN_UNITS[key];
       const canAfford = this.canAfford(config.cost);
       const cooldownRemaining = this.unitCooldowns[key];
       const onCooldown = cooldownRemaining > 0;
@@ -5980,19 +6486,19 @@ export class GameScene extends Phaser.Scene {
     
     // Update upgrade button states with checkmarks
     if (this.upgradeButtons) {
-      // Roman Armor
-      const armorBtn = this.upgradeButtons.roman_armor;
-      if (armorBtn) {
-        armorBtn.checkmark.setVisible(this.romanUpgrades.armor);
-        armorBtn.button.setAlpha(this.romanUpgrades.armor ? 0.5 : (this.canAfford(CONFIG.ROMAN_UPGRADES.armor.cost) ? 1 : 0.5));
-      }
-      
-      // Roman Weapon
-      const weaponBtn = this.upgradeButtons.roman_weapon;
-      if (weaponBtn) {
-        weaponBtn.checkmark.setVisible(this.romanUpgrades.weapon);
-        weaponBtn.button.setAlpha(this.romanUpgrades.weapon ? 0.5 : (this.canAfford(CONFIG.ROMAN_UPGRADES.weapon.cost) ? 1 : 0.5));
-      }
+      const checkUpgradeBtn = (key, purchased, cost) => {
+        const btn = this.upgradeButtons[key];
+        if (btn) {
+          btn.checkmark.setVisible(purchased);
+          btn.button.setAlpha(purchased ? 0.5 : (this.canAfford(cost) ? 1 : 0.5));
+        }
+      };
+      checkUpgradeBtn('roman_armor', this.romanUpgrades.armor, CONFIG.ROMAN_UPGRADES.armor.cost);
+      checkUpgradeBtn('roman_weapon', this.romanUpgrades.weapon, CONFIG.ROMAN_UPGRADES.weapon.cost);
+      checkUpgradeBtn('viking_ironForging', this.vikingUpgrades.ironForging, CONFIG.VIKING_UPGRADES.ironForging.cost);
+      checkUpgradeBtn('viking_shieldWallTraining', this.vikingUpgrades.shieldWallTraining, CONFIG.VIKING_UPGRADES.shieldWallTraining.cost);
+      checkUpgradeBtn('alien_exoskeleton', this.alienUpgrades.exoskeleton, CONFIG.ALIEN_UPGRADES.exoskeleton.cost);
+      checkUpgradeBtn('alien_plasmaInfusion', this.alienUpgrades.plasmaInfusion, CONFIG.ALIEN_UPGRADES.plasmaInfusion.cost);
     }
     
     // Update aqueduct upgrade state
