@@ -1507,14 +1507,14 @@ export class GameScene extends BaseGameScene {
     
     this.pauseButton.on('pointerdown', () => {
       soundEffects.playButtonClick();
-      this.togglePause();
+      this.openMenu();
     });
     this.pauseButton.on('pointerover', () => {
       soundEffects.playButtonHover();
       this.pauseButton.setFillStyle(0xFFB733);
     });
     this.pauseButton.on('pointerout', () => this.pauseButton.setFillStyle(0xFFA500));
-    
+
     // Menu button
     const menuX = pauseX + buttonSize + spacing;
     this.menuButton = this.add.rectangle(menuX, centerY, buttonSize, buttonSize, 0x2196F3);
@@ -2439,17 +2439,17 @@ export class GameScene extends BaseGameScene {
     this.pauseIcon.setDepth(100);
     
     this.pauseButton.on('pointerdown', () => {
-      this.togglePause();
+      this.openMenu();
     });
-    
+
     this.pauseButton.on('pointerover', () => {
       this.pauseButton.setFillStyle(0xFFB733);
     });
-    
+
     this.pauseButton.on('pointerout', () => {
       this.pauseButton.setFillStyle(0xFFA500);
     });
-    
+
     // Menu button
     const menuX = safeRight - buttonSize / 2;
     const menuY = pauseY + buttonSize + spacing;
