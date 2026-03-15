@@ -1,6 +1,13 @@
+import { ProfileManager } from './ProfileManager.js';
+
+function profileKey(key) {
+  const profile = ProfileManager.getActive();
+  return profile !== null ? `profile_${profile.slot}_${key}` : key;
+}
+
 function safeLocalStorageGet(key, fallback) {
   try {
-    return localStorage.getItem(key);
+    return localStorage.getItem(profileKey(key)) ?? localStorage.getItem(key) ?? fallback;
   } catch (e) {
     return fallback;
   }
@@ -8,7 +15,7 @@ function safeLocalStorageGet(key, fallback) {
 
 function safeLocalStorageSet(key, value) {
   try {
-    localStorage.setItem(key, value);
+    localStorage.setItem(profileKey(key), value);
   } catch (e) {
     // silently ignore in private browsing or when storage is full
   }

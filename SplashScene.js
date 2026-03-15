@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { MusicManager } from "./MusicManager.js";
+import { ProfileManager } from "./ProfileManager.js";
 
 export class SplashScene extends Phaser.Scene {
   constructor() {
@@ -206,10 +207,13 @@ export class SplashScene extends Phaser.Scene {
 
       this.game.canvas.style.display = "block";
 
+      ProfileManager.migrateExistingSession();
+
       MusicManager.play('menu-theme');
 
       this.cameras.main.fadeIn(500, 0, 0, 0);
-      this.scene.start("MenuScene");
+      const nextScene = ProfileManager.hasAnyProfile() ? "MenuScene" : "ProfileSelectScene";
+      this.scene.start(nextScene);
     }, 400);
   }
 

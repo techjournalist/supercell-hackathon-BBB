@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { AudioManager } from './AudioManager.js';
 import { soundEffects } from './SoundEffectsManager.js';
 import { MusicManager } from './MusicManager.js';
+import { ProfileManager } from './ProfileManager.js';
 
 export class MenuScene extends Phaser.Scene {
   constructor() {
@@ -16,7 +17,9 @@ export class MenuScene extends Phaser.Scene {
     this.load.image('menu-bg', 'https://rosebud.ai/assets/menu-screen.jpeg?D4E2');
   }
 
-  init() {}
+  init() {
+    this._transitioning = false;
+  }
 
   create() {
     const { width, height } = this.scale;
@@ -167,28 +170,42 @@ export class MenuScene extends Phaser.Scene {
     });
     footer.setOrigin(0.5, 1);
     
-    // Player name display in corner with responsive font
-    const playerName = localStorage.getItem('playerName') || 'Player';
-    const nameFontSize = Math.max(14, Math.min(width * 0.018, 18));
-    const nameDisplay = this.add.text(20, 20, `👤 ${playerName}`, {
+    // Profile display in top-left corner
+    const activeProfile = ProfileManager.getActive();
+    const playerName = activeProfile ? activeProfile.name : (localStorage.getItem('playerName') || 'Player');
+    const profileIcon = activeProfile ? ProfileManager.getIconChar(activeProfile.icon) : '⚔';
+    const nameFontSize = Math.max(13, Math.min(width * 0.016, 16));
+
+    const nameDisplay = this.add.text(16, 16, `${profileIcon} ${playerName}`, {
       fontSize: `${nameFontSize}px`,
       fontFamily: 'Arial, sans-serif',
       color: '#c9941a',
       fontStyle: 'bold',
     });
     nameDisplay.setInteractive({ useHandCursor: true });
-    
-    // Click to change name
-    nameDisplay.on('pointerdown', () => {
-      this.promptPlayerName();
+
+    nameDisplay.on('pointerover', () => nameDisplay.setColor('#f0c040'));
+    nameDisplay.on('pointerout', () => nameDisplay.setColor('#c9941a'));
+    nameDisplay.on('pointerdown', () => this.promptPlayerName());
+
+    // Switch profile button below name
+    const switchFontSize = Math.max(9, Math.min(width * 0.011, 11));
+    const switchBtn = this.add.text(16, 16 + nameFontSize + 6, 'SWITCH PROFILE', {
+      fontSize: `${switchFontSize}px`,
+      fontFamily: 'Arial, sans-serif',
+      color: '#5a4a2a',
+      letterSpacing: 1,
     });
-    
-    nameDisplay.on('pointerover', () => {
-      nameDisplay.setColor('#f0c040');
-    });
-    
-    nameDisplay.on('pointerout', () => {
-      nameDisplay.setColor('#c9941a');
+    switchBtn.setInteractive({ useHandCursor: true });
+    switchBtn.on('pointerover', () => switchBtn.setColor('#c9941a'));
+    switchBtn.on('pointerout', () => switchBtn.setColor('#5a4a2a'));
+    switchBtn.on('pointerdown', () => {
+      soundEffects.playButtonClick && soundEffects.playButtonClick();
+      MusicManager.stop();
+      this.cameras.main.fadeOut(300, 0, 0, 0);
+      this.cameras.main.once('camerafadeoutcomplete', () => {
+        this.scene.start('ProfileSelectScene', { fromMenu: true });
+      });
     });
     
     // Settings icon (gear) in top-right corner
@@ -215,342 +232,9 @@ export class MenuScene extends Phaser.Scene {
   }
   
   showSettings() {
-    // Launch the audio settings scene as an overlay
     this.scene.launch('AudioSettingsScene', { callingScene: 'MenuScene' });
-    return;
-    
-    // OLD CODE BELOW (kept for reference, can be removed)
-    const { width, height } = this.scale;
-    
-    // Get current volume from localStorage (default 0.7)
-    const currentVolume = parseFloat(localStorage.getItem('gameVolume') || '0.7');
-    
-    // Get separate music/sfx settings (defaults: both enabled)
-    let musicEnabled = localStorage.getItem('musicEnabled') !== 'false';
-    let sfxEnabled = localStorage.getItem('sfxEnabled') !== 'false';
-    
-    // Dark overlay
-    const overlay = this.add.rectangle(0, 0, width, height, 0x000000, 0.7);
-    overlay.setOrigin(0);
-    overlay.setDepth(1000);
-    overlay.setInteractive();
-    
-    // Settings dialog - responsive sizing (taller to fit new controls)
-    const dialogWidth = Math.min(500, width * 0.9);
-    const dialogHeight = Math.min(450, height * 0.9);
-    const dialog = this.add.rectangle(width / 2, height / 2, dialogWidth, dialogHeight, 0x0a050f);
-    dialog.setStrokeStyle(2, 0xc9941a);
-    dialog.setDepth(1001);
-    
-    // Title
-    const titleFontSize = Math.max(16, Math.min(width * 0.02, 24));
-    const title = this.add.text(width / 2, height / 2 - dialogHeight / 2 + 40, '⚙️ SETTINGS', {
-      fontSize: `${titleFontSize}px`,
-      fontFamily: 'Arial, sans-serif',
-      color: '#c9941a',
-      fontStyle: 'bold',
-      letterSpacing: 2,
-    });
-    title.setOrigin(0.5);
-    title.setDepth(1001);
-    
-    // Volume label
-    const labelFontSize = Math.max(14, Math.min(width * 0.016, 18));
-    const volumeLabel = this.add.text(width / 2, height / 2 - 50, '🔊 VOLUME', {
-      fontSize: `${labelFontSize}px`,
-      fontFamily: 'Arial, sans-serif',
-      color: '#e8d5a3',
-      fontStyle: 'bold',
-    });
-    volumeLabel.setOrigin(0.5);
-    volumeLabel.setDepth(1001);
-    
-    // Volume percentage display
-    const volumePercentText = this.add.text(width / 2, height / 2 - 20, `${Math.round(currentVolume * 100)}%`, {
-      fontSize: '20px',
-      fontFamily: 'Arial, sans-serif',
-      color: '#f0c040',
-      fontStyle: 'bold',
-    });
-    volumePercentText.setOrigin(0.5);
-    volumePercentText.setDepth(1001);
-    
-    // Slider track
-    const sliderWidth = Math.min(300, dialogWidth * 0.7);
-    const sliderHeight = 8;
-    const sliderTrack = this.add.rectangle(width / 2, height / 2 + 20, sliderWidth, sliderHeight, 0x333333);
-    sliderTrack.setStrokeStyle(1, 0xc9941a);
-    sliderTrack.setDepth(1001);
-    
-    // Slider fill (shows current volume)
-    const sliderFill = this.add.rectangle(
-      width / 2 - sliderWidth / 2 + (sliderWidth * currentVolume) / 2, 
-      height / 2 + 20, 
-      sliderWidth * currentVolume, 
-      sliderHeight, 
-      0xc9941a
-    );
-    sliderFill.setOrigin(0, 0.5);
-    sliderFill.setDepth(1002);
-    
-    // Slider handle
-    const handleRadius = 12;
-    const sliderHandle = this.add.circle(
-      width / 2 - sliderWidth / 2 + sliderWidth * currentVolume,
-      height / 2 + 20,
-      handleRadius,
-      0xf0c040
-    );
-    sliderHandle.setStrokeStyle(2, 0xc9941a);
-    sliderHandle.setDepth(1003);
-    sliderHandle.setInteractive({ useHandCursor: true, draggable: true });
-    
-    // Dragging state
-    let isDragging = false;
-    
-    // Update volume function
-    const updateVolume = (pointerX) => {
-      const sliderLeft = width / 2 - sliderWidth / 2;
-      const sliderRight = width / 2 + sliderWidth / 2;
-      
-      // Clamp pointer position to slider bounds
-      const clampedX = Phaser.Math.Clamp(pointerX, sliderLeft, sliderRight);
-      const volumeValue = (clampedX - sliderLeft) / sliderWidth;
-      
-      // Update handle position
-      sliderHandle.x = clampedX;
-      
-      // Update fill width and position
-      sliderFill.width = sliderWidth * volumeValue;
-      sliderFill.x = sliderLeft;
-      
-      // Update percentage text
-      volumePercentText.setText(`${Math.round(volumeValue * 100)}%`);
-      
-      // Save to localStorage
-      localStorage.setItem('gameVolume', volumeValue.toString());
-      
-      // Apply volume to Tone.js (if it exists)
-      if (window.Tone && window.Tone.Destination) {
-        window.Tone.Destination.volume.value = Tone.gainToDb(volumeValue);
-      }
-      
-      // Update music playback volume
-      this.updateMusicVolume();
-    };
-    
-    // Handle drag events
-    sliderHandle.on('dragstart', () => {
-      isDragging = true;
-      sliderHandle.setFillStyle(0xffdc80);
-    });
-    
-    sliderHandle.on('drag', (pointer) => {
-      updateVolume(pointer.x);
-    });
-    
-    sliderHandle.on('dragend', () => {
-      isDragging = false;
-      sliderHandle.setFillStyle(0xf0c040);
-    });
-    
-    // Allow clicking on track to set volume
-    sliderTrack.setInteractive();
-    sliderTrack.on('pointerdown', (pointer) => {
-      if (!isDragging) {
-        updateVolume(pointer.x);
-      }
-    });
-    
-    // Volume icons (mute/max)
-    const muteFontSize = Math.max(16, Math.min(width * 0.018, 20));
-    const muteIcon = this.add.text(width / 2 - sliderWidth / 2 - 30, height / 2 + 20, '🔇', {
-      fontSize: `${muteFontSize}px`,
-    });
-    muteIcon.setOrigin(0.5);
-    muteIcon.setDepth(1001);
-    muteIcon.setInteractive({ useHandCursor: true });
-    
-    muteIcon.on('pointerdown', () => {
-      updateVolume(width / 2 - sliderWidth / 2); // Set to 0%
-    });
-    
-    const maxIcon = this.add.text(width / 2 + sliderWidth / 2 + 30, height / 2 + 20, '🔊', {
-      fontSize: `${muteFontSize}px`,
-    });
-    maxIcon.setOrigin(0.5);
-    maxIcon.setDepth(1001);
-    maxIcon.setInteractive({ useHandCursor: true });
-    
-    maxIcon.on('pointerdown', () => {
-      updateVolume(width / 2 + sliderWidth / 2); // Set to 100%
-    });
-    
-    // Info text
-    const infoFontSize = Math.max(11, Math.min(width * 0.012, 13));
-    const infoText = this.add.text(width / 2, height / 2 + 70, 'Master volume controls all audio', {
-      fontSize: `${infoFontSize}px`,
-      fontFamily: 'Arial, sans-serif',
-      color: '#999999',
-      align: 'center',
-    });
-    infoText.setOrigin(0.5);
-    infoText.setDepth(1001);
-    
-    // Separator line
-    const separator = this.add.graphics();
-    separator.lineStyle(1, 0xc9941a, 0.3);
-    separator.lineBetween(width / 2 - sliderWidth / 2, height / 2 + 95, width / 2 + sliderWidth / 2, height / 2 + 95);
-    separator.setDepth(1001);
-    
-    // Music toggle
-    const toggleY = height / 2 + 120;
-    const toggleLabelFontSize = Math.max(13, Math.min(width * 0.014, 16));
-    
-    const musicLabel = this.add.text(width / 2 - 80, toggleY, '🎵 Music', {
-      fontSize: `${toggleLabelFontSize}px`,
-      fontFamily: 'Arial, sans-serif',
-      color: '#e8d5a3',
-      fontStyle: 'bold',
-    });
-    musicLabel.setOrigin(0, 0.5);
-    musicLabel.setDepth(1001);
-    
-    // Music toggle button
-    const musicToggleButton = this.add.rectangle(width / 2 + 80, toggleY, 60, 28, musicEnabled ? 0x66BB6A : 0x555555);
-    musicToggleButton.setStrokeStyle(2, 0xc9941a);
-    musicToggleButton.setInteractive({ useHandCursor: true });
-    musicToggleButton.setDepth(1001);
-    
-    const musicToggleText = this.add.text(width / 2 + 80, toggleY, musicEnabled ? 'ON' : 'OFF', {
-      fontSize: '12px',
-      fontFamily: 'Arial, sans-serif',
-      color: '#ffffff',
-      fontStyle: 'bold',
-    });
-    musicToggleText.setOrigin(0.5);
-    musicToggleText.setDepth(1002);
-    
-    musicToggleButton.on('pointerdown', () => {
-      const newState = !musicEnabled;
-      localStorage.setItem('musicEnabled', newState.toString());
-      
-      // Update button appearance
-      musicToggleButton.setFillStyle(newState ? 0x66BB6A : 0x555555);
-      musicToggleText.setText(newState ? 'ON' : 'OFF');
-      
-      // Update local variable
-      musicEnabled = newState;
-      
-      // Update music playback
-      this.updateMusicVolume();
-    });
-    
-    musicToggleButton.on('pointerover', () => {
-      musicToggleButton.setFillStyle(musicEnabled ? 0x81C784 : 0x666666);
-    });
-    
-    musicToggleButton.on('pointerout', () => {
-      musicToggleButton.setFillStyle(musicEnabled ? 0x66BB6A : 0x555555);
-    });
-    
-    // Sound effects toggle
-    const sfxY = toggleY + 40;
-    
-    const sfxLabel = this.add.text(width / 2 - 80, sfxY, '🔊 SFX', {
-      fontSize: `${toggleLabelFontSize}px`,
-      fontFamily: 'Arial, sans-serif',
-      color: '#e8d5a3',
-      fontStyle: 'bold',
-    });
-    sfxLabel.setOrigin(0, 0.5);
-    sfxLabel.setDepth(1001);
-    
-    // SFX toggle button
-    const sfxToggleButton = this.add.rectangle(width / 2 + 80, sfxY, 60, 28, sfxEnabled ? 0x66BB6A : 0x555555);
-    sfxToggleButton.setStrokeStyle(2, 0xc9941a);
-    sfxToggleButton.setInteractive({ useHandCursor: true });
-    sfxToggleButton.setDepth(1001);
-    
-    const sfxToggleText = this.add.text(width / 2 + 80, sfxY, sfxEnabled ? 'ON' : 'OFF', {
-      fontSize: '12px',
-      fontFamily: 'Arial, sans-serif',
-      color: '#ffffff',
-      fontStyle: 'bold',
-    });
-    sfxToggleText.setOrigin(0.5);
-    sfxToggleText.setDepth(1002);
-    
-    sfxToggleButton.on('pointerdown', () => {
-      const newState = !sfxEnabled;
-      localStorage.setItem('sfxEnabled', newState.toString());
-      
-      // Update button appearance
-      sfxToggleButton.setFillStyle(newState ? 0x66BB6A : 0x555555);
-      sfxToggleText.setText(newState ? 'ON' : 'OFF');
-      
-      // Update local variable
-      sfxEnabled = newState;
-    });
-    
-    sfxToggleButton.on('pointerover', () => {
-      sfxToggleButton.setFillStyle(sfxEnabled ? 0x81C784 : 0x666666);
-    });
-    
-    sfxToggleButton.on('pointerout', () => {
-      sfxToggleButton.setFillStyle(sfxEnabled ? 0x66BB6A : 0x555555);
-    });
-    
-    // Close button
-    const closeButton = this.add.rectangle(width / 2, height / 2 + dialogHeight / 2 - 40, 120, 45, 0x28190a);
-    closeButton.setStrokeStyle(2, 0xc9941a);
-    closeButton.setInteractive({ useHandCursor: true });
-    closeButton.setDepth(1001);
-    
-    const closeText = this.add.text(width / 2, height / 2 + dialogHeight / 2 - 40, 'CLOSE', {
-      fontSize: '16px',
-      fontFamily: 'Arial, sans-serif',
-      color: '#e8d5a3',
-      fontStyle: 'bold',
-    });
-    closeText.setOrigin(0.5);
-    closeText.setDepth(1001);
-    
-    closeButton.on('pointerover', () => {
-      closeButton.setFillStyle(0x352010);
-    });
-    
-    closeButton.on('pointerout', () => {
-      closeButton.setFillStyle(0x28190a);
-    });
-    
-    // Close handler
-    const closeSettings = () => {
-      overlay.destroy();
-      dialog.destroy();
-      title.destroy();
-      volumeLabel.destroy();
-      volumePercentText.destroy();
-      sliderTrack.destroy();
-      sliderFill.destroy();
-      sliderHandle.destroy();
-      muteIcon.destroy();
-      maxIcon.destroy();
-      infoText.destroy();
-      separator.destroy();
-      musicLabel.destroy();
-      musicToggleButton.destroy();
-      musicToggleText.destroy();
-      sfxLabel.destroy();
-      sfxToggleButton.destroy();
-      sfxToggleText.destroy();
-      closeButton.destroy();
-      closeText.destroy();
-    };
-    
-    closeButton.on('pointerdown', closeSettings);
-    overlay.on('pointerdown', closeSettings);
   }
+
   
   promptPlayerName() {
     const currentName = localStorage.getItem('playerName') || 'Player';
@@ -628,12 +312,15 @@ export class MenuScene extends Phaser.Scene {
     okText.setDepth(1001);
     
     okButton.on('pointerdown', () => {
-      // Use browser prompt since we can't capture keyboard in sandboxed iframe
       const newName = prompt('Enter your name (max 12 characters):', playerInput);
       if (newName && newName.trim()) {
         const sanitized = newName.trim().substring(0, 12);
-        localStorage.setItem('playerName', sanitized);
-        console.log('Player name set to:', sanitized);
+        const active = ProfileManager.getActive();
+        if (active) {
+          ProfileManager.rename(active.slot, sanitized);
+        } else {
+          localStorage.setItem('playerName', sanitized);
+        }
       }
       
       // Close dialog

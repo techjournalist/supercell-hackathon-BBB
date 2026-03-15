@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { SplashScene } from './SplashScene.js';
+import { ProfileSelectScene } from './ProfileSelectScene.js';
 import { MenuScene } from './MenuScene.js';
 import { CampaignScene } from './CampaignScene.js';
 import { ComicIntroScene } from './ComicIntroScene.js';
@@ -40,6 +41,7 @@ const config = {
   },
   scene: [
     SplashScene,
+    ProfileSelectScene,
     MenuScene,
     CampaignScene, 
     ComicIntroScene, 

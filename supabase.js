@@ -1,10 +1,14 @@
+import { ProfileManager } from './ProfileManager.js';
+
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 const createClient = window.supabase?.createClient;
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-function getOrCreateSessionId() {
+function getSessionId() {
+  const profile = ProfileManager.getActive();
+  if (profile) return profile.sessionId;
   let id = localStorage.getItem('gameSessionId');
   if (!id) {
     id = crypto.randomUUID();
@@ -13,7 +17,7 @@ function getOrCreateSessionId() {
   return id;
 }
 
-export const sessionId = getOrCreateSessionId();
+export const sessionId = getSessionId();
 
 export async function saveGameSession(data) {
   try {
