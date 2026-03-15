@@ -102,21 +102,33 @@ export class BaseGameScene extends Phaser.Scene {
       const attackKey = `${key}_attack`;
 
       if (this.textures.exists(walkKey) && !this.anims.exists(walkKey)) {
-        this.anims.create({
-          key: walkKey,
-          frames: this.anims.generateFrameNumbers(walkKey, { start: 0, end: SPRITE_SHEET_FRAME_COUNT - 1 }),
-          frameRate: 10,
-          repeat: -1,
-        });
+        const tex = this.textures.get(walkKey);
+        const frameCount = Object.keys(tex.frames).filter(k => k !== '__BASE').length;
+        console.log(`[Anim] ${walkKey}: texture exists, frameCount=${frameCount}, source size=${tex.source[0]?.width}x${tex.source[0]?.height}`);
+        if (frameCount > 0) {
+          this.anims.create({
+            key: walkKey,
+            frames: this.anims.generateFrameNumbers(walkKey, { start: 0, end: frameCount - 1 }),
+            frameRate: 10,
+            repeat: -1,
+          });
+          console.log(`[Anim] Created animation: ${walkKey} with ${frameCount} frames`);
+        } else {
+          console.warn(`[Anim] SKIPPING ${walkKey} - no parsed frames found`);
+        }
       }
 
       if (this.textures.exists(attackKey) && !this.anims.exists(attackKey)) {
-        this.anims.create({
-          key: attackKey,
-          frames: this.anims.generateFrameNumbers(attackKey, { start: 0, end: SPRITE_SHEET_FRAME_COUNT - 1 }),
-          frameRate: 12,
-          repeat: 0,
-        });
+        const tex = this.textures.get(attackKey);
+        const frameCount = Object.keys(tex.frames).filter(k => k !== '__BASE').length;
+        if (frameCount > 0) {
+          this.anims.create({
+            key: attackKey,
+            frames: this.anims.generateFrameNumbers(attackKey, { start: 0, end: frameCount - 1 }),
+            frameRate: 12,
+            repeat: 0,
+          });
+        }
       }
     });
   }
