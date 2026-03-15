@@ -2558,6 +2558,10 @@ export class GameScene extends BaseGameScene {
 
   setupEscKey() {
     this.input.keyboard.on('keydown-ESC', () => {
+      if (this.activeSpell) {
+        this._cancelSpellTargeting();
+        return;
+      }
       if (!this.scene.isPaused()) {
         this.openMenu();
       }
@@ -3025,33 +3029,38 @@ export class GameScene extends BaseGameScene {
 
     this.activeSpell = spellName;
     this._highlightSpellButton(spellName, true);
+    this._spellTargetingCursor = true;
 
-    // Targeted click handler stored so we can cancel it
-    this._pendingSpellListener = (pointer) => {
-      // Only cast if the click was not on a UI button (rough check by y-position)
-      if (pointer.y < 70) {
-        this._cancelSpellTargeting();
-        return;
-      }
+    // Defer registration by one frame so the button-click that triggered selectSpell
+    // does not immediately consume the listener before the player can aim.
+    this.time.delayedCall(0, () => {
+      if (this.activeSpell !== spellName) return;
 
-      const worldX = pointer.x + this.cameras.main.scrollX;
-      const worldY = pointer.y;
+      this._pendingSpellListener = (pointer) => {
+        // Ignore clicks inside the top UI bar
+        if (pointer.y < 70) {
+          this._cancelSpellTargeting();
+          return;
+        }
 
-      this.castSpell(spellName, worldX, worldY);
-      this._cancelCurrentSpellHighlight();
-      this.activeSpell = null;
-      this._pendingSpellListener = null;
-    };
+        const worldX = pointer.x + this.cameras.main.scrollX;
+        const worldY = pointer.y;
 
-    this.input.once('pointerdown', this._pendingSpellListener);
+        this.castSpell(spellName, worldX, worldY);
+        this._cancelCurrentSpellHighlight();
+        this.activeSpell = null;
+        this._pendingSpellListener = null;
+        this._spellTargetingCursor = false;
+        this._hideSpellTargetIndicator();
+      };
+
+      this.input.once('pointerdown', this._pendingSpellListener);
+      this._showSpellTargetIndicator(spellName);
+    });
   }
 
   _highlightSpellButton(spellName, active) {
-    const color = active ? 0xFF6600 : CONFIG.COLORS.spellButton;
-    if (spellName === 'shieldWall' && this.shieldButton) this.shieldButton.setFillStyle(color);
-    else if (spellName === 'rainOfPila' && this.rainButton) this.rainButton.setFillStyle(color);
-    else if (spellName === 'healingSpring' && this.healButton) this.healButton.setFillStyle(color);
-    // Viking and alien buttons are in spellButtons object
+    const color = active ? 0xFF6600 : 0x2C2C2C;
     if (this.spellButtons && this.spellButtons[spellName]) {
       this.spellButtons[spellName].button.setFillStyle(color);
     }
@@ -3070,6 +3079,58 @@ export class GameScene extends BaseGameScene {
     }
     this._cancelCurrentSpellHighlight();
     this.activeSpell = null;
+    this._spellTargetingCursor = false;
+    this._hideSpellTargetIndicator();
+  }
+
+  _showSpellTargetIndicator(spellName) {
+    this._hideSpellTargetIndicator();
+    const { width } = this.scale;
+    const spellNames = {
+      shieldWall: 'SHIELD WALL',
+      rainOfPila: 'RAIN OF PILA',
+      healingSpring: 'HEALING SPRING',
+      thorLightning: "THOR'S LIGHTNING",
+      battleRage: 'BATTLE RAGE',
+      frostShield: 'FROST SHIELD',
+      mindControl: 'MIND CONTROL',
+      plasmaBomb: 'PLASMA BOMB',
+    };
+    const label = spellNames[spellName] || spellName.toUpperCase();
+    this._spellIndicatorBg = this.add.rectangle(width / 2, 100, 340, 36, 0x000000, 0.75);
+    this._spellIndicatorBg.setScrollFactor(0);
+    this._spellIndicatorBg.setDepth(500);
+    this._spellIndicatorBg.setStrokeStyle(2, 0xFF6600);
+    this._spellIndicatorText = this.add.text(width / 2, 100, `CLICK TO CAST: ${label}   [ESC to cancel]`, {
+      fontSize: '9px',
+      fontFamily: 'Press Start 2P',
+      color: '#FF6600',
+      stroke: '#000000',
+      strokeThickness: 2,
+    });
+    this._spellIndicatorText.setOrigin(0.5);
+    this._spellIndicatorText.setScrollFactor(0);
+    this._spellIndicatorText.setDepth(501);
+    this.tweens.add({
+      targets: [this._spellIndicatorBg, this._spellIndicatorText],
+      alpha: { from: 0.3, to: 1 },
+      duration: 400,
+      yoyo: true,
+      repeat: -1,
+    });
+  }
+
+  _hideSpellTargetIndicator() {
+    if (this._spellIndicatorBg) {
+      this.tweens.killTweensOf(this._spellIndicatorBg);
+      this._spellIndicatorBg.destroy();
+      this._spellIndicatorBg = null;
+    }
+    if (this._spellIndicatorText) {
+      this.tweens.killTweensOf(this._spellIndicatorText);
+      this._spellIndicatorText.destroy();
+      this._spellIndicatorText = null;
+    }
   }
   
   castSpell(spellName, x, y) {
@@ -3187,8 +3248,7 @@ export class GameScene extends BaseGameScene {
 
       drawLightningBolt(fromX, fromY, currentUnit.x, currentUnit.y, 1 - chain * 0.25);
 
-      currentUnit.health -= currentDamage;
-      if (currentUnit.health <= 0) currentUnit.die();
+      currentUnit.takeDamage(currentDamage, fromX, fromY);
 
       // Find next chain target
       if (chain < config.chainCount - 1) {
