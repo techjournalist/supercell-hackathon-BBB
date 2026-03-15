@@ -66,7 +66,7 @@ export class MenuScene extends Phaser.Scene {
     const labelHeight = 20;
     const panelPadding = 8;
     
-    const totalHeight = 
+    const totalHeight =
       labelHeight + // "CAMPAIGNS" label
       5 + // margin-bottom of label
       panelPadding + // top padding
@@ -75,7 +75,9 @@ export class MenuScene extends Phaser.Scene {
       12 + // gap after panel
       (secondaryButtonHeight * 3) + (secondaryGap * 2) + // secondary buttons
       10 + // gap before leaderboard link
-      20; // leaderboard link height
+      20 + // leaderboard link height
+      24 + // friends link
+      24; // quit game link
     
     // Start from bottom and work upwards
     let currentY = height - containerBottomPadding - totalHeight;
@@ -189,7 +191,8 @@ export class MenuScene extends Phaser.Scene {
     quitLink.on('pointerover', () => quitLink.setColor('#cc4433'));
     quitLink.on('pointerout', () => quitLink.setColor('#5a3a2a'));
     quitLink.on('pointerdown', () => {
-      if (confirm('Are you sure you want to quit?')) {
+      if (confirm('Close the game? This will close the tab.')) {
+        window.open('about:blank', '_self');
         window.close();
       }
     });

@@ -143,7 +143,8 @@ export class PauseMenuScene extends Phaser.Scene {
 
     quitButton.on('pointerdown', () => {
       soundEffects.playButtonClick();
-      if (confirm('Are you sure you want to quit?')) {
+      if (confirm('Close the game? This will close the tab.')) {
+        window.open('about:blank', '_self');
         window.close();
       }
     });
