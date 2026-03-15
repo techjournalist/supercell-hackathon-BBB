@@ -56,6 +56,24 @@ export class VikingComicIntroScene extends Phaser.Scene {
       lineSpacing: 8,
     });
     
+    // Back button
+    const backBtn = this.add.rectangle(width * 0.15, height * 0.9, 160, 44, 0x1a2332);
+    backBtn.setStrokeStyle(2, 0x87CEEB);
+    backBtn.setInteractive({ useHandCursor: true });
+
+    const backBtnText = this.add.text(width * 0.15, height * 0.9, '< BACK', {
+      fontSize: '14px',
+      fontFamily: 'Press Start 2P',
+      color: '#87CEEB',
+    });
+    backBtnText.setOrigin(0.5);
+
+    backBtn.on('pointerover', () => backBtn.setFillStyle(0x2a3342));
+    backBtn.on('pointerout', () => backBtn.setFillStyle(0x1a2332));
+    backBtn.on('pointerdown', () => {
+      this.scene.start('VikingCampaignScene');
+    });
+
     // Continue instruction
     const continueText = this.add.text(width * 0.65, height * 0.85, 'Click anywhere to continue', {
       fontSize: '16px',
@@ -64,7 +82,7 @@ export class VikingComicIntroScene extends Phaser.Scene {
       fontStyle: 'italic',
     });
     continueText.setOrigin(0.5);
-    
+
     // Blink animation
     this.tweens.add({
       targets: continueText,
@@ -73,10 +91,15 @@ export class VikingComicIntroScene extends Phaser.Scene {
       yoyo: true,
       repeat: -1,
     });
-    
-    // Click to continue
-    this.input.once('pointerdown', () => {
-      // State already set by VikingCampaignScene, just start game
+
+    // ESC to go back
+    this.input.keyboard.on('keydown-ESC', () => {
+      this.scene.start('VikingCampaignScene');
+    });
+
+    // Click to continue (but not on the back button area)
+    this.input.on('pointerdown', (pointer) => {
+      if (pointer.x < width * 0.25 && pointer.y > height * 0.82) return;
       this.scene.start('GameScene');
     });
   }

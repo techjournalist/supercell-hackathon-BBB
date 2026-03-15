@@ -4,7 +4,11 @@ export class AlienComicIntroScene extends Phaser.Scene {
   constructor() {
     super({ key: 'AlienComicIntroScene' });
   }
-  
+
+  preload() {
+    this.load.image('zyx9-portrait', 'https://rosebud.ai/assets/zyx9-portrait.webp?8tVr');
+  }
+
   create() {
     const { width, height } = this.scale;
     const levelNum = this.registry.get('alienLevel') || this.registry.get('campaignLevel') || 1;
@@ -105,10 +109,33 @@ export class AlienComicIntroScene extends Phaser.Scene {
     continueText.setOrigin(0.5);
     continueText.setAlpha(0);
     
+    // Back button (always visible)
+    const backBtn = this.add.rectangle(70, height - 36, 120, 36, 0x1a1a1a, 0.9);
+    backBtn.setStrokeStyle(2, 0x9C27B0);
+    backBtn.setInteractive({ useHandCursor: true });
+
+    const backBtnText = this.add.text(70, height - 36, '< BACK', {
+      fontSize: '12px',
+      fontFamily: 'Press Start 2P',
+      color: '#CE93D8',
+    });
+    backBtnText.setOrigin(0.5);
+
+    backBtn.on('pointerover', () => backBtn.setFillStyle(0x2a2a2a));
+    backBtn.on('pointerout', () => backBtn.setFillStyle(0x1a1a1a));
+    backBtn.on('pointerdown', () => {
+      this.scene.start('AlienCampaignScene');
+    });
+
+    // ESC to go back
+    this.input.keyboard.on('keydown-ESC', () => {
+      this.scene.start('AlienCampaignScene');
+    });
+
     // Make scene clickable after dialogue finishes
     this.time.delayedCall(3500, () => {
       continueText.setAlpha(1);
-      
+
       // Blink animation
       this.tweens.add({
         targets: continueText,
@@ -117,8 +144,9 @@ export class AlienComicIntroScene extends Phaser.Scene {
         yoyo: true,
         repeat: -1,
       });
-      
-      this.input.once('pointerdown', () => {
+
+      this.input.on('pointerdown', (pointer) => {
+        if (pointer.x < 140 && pointer.y > height - 60) return;
         this.startGame();
       });
     });

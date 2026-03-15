@@ -198,38 +198,65 @@ export class ComicIntroScene extends Phaser.Scene {
     });
     dialogueText.setOrigin(0.5);
     
+    const buttonY = height / 2 + panelHeight / 2 - 50;
+
+    // Back button
+    const backButton = this.add.rectangle(width / 2 - 160, buttonY, 200, 50, 0x2C2416);
+    backButton.setStrokeStyle(3, 0xAAAAAA);
+    backButton.setInteractive({ useHandCursor: true });
+
+    const backText = this.add.text(width / 2 - 160, buttonY, '< BACK', {
+      fontSize: '16px',
+      fontFamily: 'Press Start 2P',
+      color: '#CCCCCC',
+    });
+    backText.setOrigin(0.5);
+
+    backButton.on('pointerover', () => backButton.setFillStyle(0x3C3426));
+    backButton.on('pointerout', () => backButton.setFillStyle(0x2C2416));
+    backButton.on('pointerdown', () => {
+      this.cameras.main.fadeOut(300, 0, 0, 0);
+      this.cameras.main.once('camerafadeoutcomplete', () => {
+        this.scene.start('CampaignScene');
+      });
+    });
+
     // Continue button
-    const continueButton = this.add.rectangle(width / 2, height / 2 + panelHeight / 2 - 50, 250, 50, 0x8B4513);
+    const continueButton = this.add.rectangle(width / 2 + 80, buttonY, 250, 50, 0x8B4513);
     continueButton.setStrokeStyle(4, 0xFFD700);
     continueButton.setInteractive({ useHandCursor: true });
-    
-    const continueText = this.add.text(width / 2, height / 2 + panelHeight / 2 - 50, 'BEGIN MISSION', {
+
+    const continueText = this.add.text(width / 2 + 80, buttonY, 'BEGIN MISSION', {
       fontSize: '18px',
       fontFamily: 'Press Start 2P',
       color: '#FFFFFF',
     });
     continueText.setOrigin(0.5);
-    
-    // Button hover
+
     continueButton.on('pointerover', () => {
       continueButton.setFillStyle(0xA0522D);
     });
-    
+
     continueButton.on('pointerout', () => {
       continueButton.setFillStyle(0x8B4513);
     });
-    
-    // Start level
-    continueButton.on('pointerdown', () => {
+
+    const goToMission = () => {
       this.cameras.main.fadeOut(300, 0, 0, 0);
       this.cameras.main.once('camerafadeoutcomplete', () => {
         this.scene.start('FactionSelectScene', { campaignLevel: this.levelNum });
       });
-    });
-    
-    // Skip with spacebar or click anywhere
-    this.input.keyboard.once('keydown-SPACE', () => {
-      continueButton.emit('pointerdown');
+    };
+
+    continueButton.on('pointerdown', goToMission);
+
+    this.input.keyboard.once('keydown-SPACE', goToMission);
+
+    this.input.keyboard.on('keydown-ESC', () => {
+      this.cameras.main.fadeOut(300, 0, 0, 0);
+      this.cameras.main.once('camerafadeoutcomplete', () => {
+        this.scene.start('CampaignScene');
+      });
     });
   }
 }

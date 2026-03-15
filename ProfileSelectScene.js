@@ -276,24 +276,29 @@ export class ProfileSelectScene extends Phaser.Scene {
   }
 
   _drawFooter(width, height) {
-    if (this._fromMenu) {
-      const backText = this.add.text(width / 2, height * 0.9, '← BACK TO MENU', {
-        fontSize: '11px',
-        fontFamily: 'Arial, sans-serif',
-        color: '#5a4a2a',
-        letterSpacing: 2,
+    const backText = this.add.text(width / 2, height * 0.9, '← BACK TO MENU', {
+      fontSize: '11px',
+      fontFamily: 'Arial, sans-serif',
+      color: '#5a4a2a',
+      letterSpacing: 2,
+    });
+    backText.setOrigin(0.5);
+    backText.setInteractive({ useHandCursor: true });
+    backText.on('pointerover', () => backText.setColor(GOLD_STR));
+    backText.on('pointerout', () => backText.setColor('#5a4a2a'));
+    backText.on('pointerdown', () => {
+      this.cameras.main.fadeOut(300, 0, 0, 0);
+      this.cameras.main.once('camerafadeoutcomplete', () => {
+        this.scene.start('MenuScene');
       });
-      backText.setOrigin(0.5);
-      backText.setInteractive({ useHandCursor: true });
-      backText.on('pointerover', () => backText.setColor(GOLD_STR));
-      backText.on('pointerout', () => backText.setColor('#5a4a2a'));
-      backText.on('pointerdown', () => {
-        this.cameras.main.fadeOut(300, 0, 0, 0);
-        this.cameras.main.once('camerafadeoutcomplete', () => {
-          this.scene.start('MenuScene');
-        });
+    });
+
+    this.input.keyboard.on('keydown-ESC', () => {
+      this.cameras.main.fadeOut(300, 0, 0, 0);
+      this.cameras.main.once('camerafadeoutcomplete', () => {
+        this.scene.start('MenuScene');
       });
-    }
+    });
   }
 
   _showCreateDialog(slot) {

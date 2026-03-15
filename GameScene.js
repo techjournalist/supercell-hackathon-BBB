@@ -198,6 +198,9 @@ export class GameScene extends BaseGameScene {
     
     // Setup camera controls
     this.setupCameraControls();
+
+    // ESC key opens pause menu
+    this.setupEscKey();
     
     // Create fog of war system
     this.createFogOfWar();
@@ -2551,6 +2554,14 @@ export class GameScene extends BaseGameScene {
     // Pause game and show menu overlay
     this.scene.pause();
     this.scene.launch('PauseMenuScene');
+  }
+
+  setupEscKey() {
+    this.input.keyboard.on('keydown-ESC', () => {
+      if (!this.scene.isPaused()) {
+        this.openMenu();
+      }
+    });
   }
   
   skipTutorial() {

@@ -176,6 +176,24 @@ export class MenuScene extends Phaser.Scene {
       this.startTransition('FriendsScene');
     });
 
+    currentY += 24;
+    const quitLink = this.add.text(width / 2, currentY, 'QUIT GAME', {
+      fontSize: `${linkFontSize}px`,
+      fontFamily: 'Arial, sans-serif',
+      color: '#5a3a2a',
+      letterSpacing: 2,
+      fontStyle: 'bold',
+    });
+    quitLink.setOrigin(0.5);
+    quitLink.setInteractive({ useHandCursor: true });
+    quitLink.on('pointerover', () => quitLink.setColor('#cc4433'));
+    quitLink.on('pointerout', () => quitLink.setColor('#5a3a2a'));
+    quitLink.on('pointerdown', () => {
+      if (confirm('Are you sure you want to quit?')) {
+        window.close();
+      }
+    });
+
     // Footer version text - absolute bottom with responsive font
     const footerFontSize = Math.max(9, Math.min(width * 0.01, 11));
     const footer = this.add.text(width / 2, height - 8, 'v0.1 Early Access', {

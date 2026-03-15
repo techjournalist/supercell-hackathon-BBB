@@ -12,9 +12,18 @@ export class VictoryScene extends Phaser.Scene {
   
   create(data) {
     const { width, height } = this.scale;
-    
+
     // Fade in
     this.cameras.main.fadeIn(500, 0, 0, 0);
+
+    this.input.keyboard.on('keydown-ESC', () => {
+      this.registry.set('campaignLevel', null);
+      this.registry.set('vikingCampaign', false);
+      this.registry.set('alienCampaign', false);
+      this.registry.set('challengeMode', null);
+      this.registry.set('skirmishDifficulty', null);
+      this.startTransition('MenuScene');
+    });
     
     // Check if challenge mode
     const challengeMode = data.challengeMode;

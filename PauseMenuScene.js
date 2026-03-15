@@ -15,7 +15,7 @@ export class PauseMenuScene extends Phaser.Scene {
     overlay.setDepth(200);
     
     // Menu panel
-    const panel = this.add.rectangle(width / 2, height / 2, 400, 500, 0x1A1A2E);
+    const panel = this.add.rectangle(width / 2, height / 2, 400, 600, 0x1A1A2E);
     panel.setStrokeStyle(4, 0xFFD700);
     panel.setScrollFactor(0);
     panel.setDepth(200);
@@ -81,12 +81,8 @@ export class PauseMenuScene extends Phaser.Scene {
     
     mainMenuButton.on('pointerdown', () => {
       soundEffects.playButtonClick();
-      this.scene.stop();
       this.scene.stop('GameScene');
-      this.cameras.main.fadeOut(300, 0, 0, 0);
-      this.cameras.main.once('camerafadeoutcomplete', () => {
-        this.scene.start('MenuScene');
-      });
+      this.scene.start('MenuScene');
     });
     
     mainMenuButton.on('pointerover', () => {
@@ -129,6 +125,38 @@ export class PauseMenuScene extends Phaser.Scene {
       audioButton.setFillStyle(0x9C27B0);
     });
     
+    // Quit button
+    const quitButton = this.add.rectangle(width / 2, height / 2 + 250, 300, 60, 0x4A1010);
+    quitButton.setStrokeStyle(3, 0xCC4433);
+    quitButton.setInteractive({ useHandCursor: true });
+    quitButton.setScrollFactor(0);
+    quitButton.setDepth(200);
+
+    const quitText = this.add.text(width / 2, height / 2 + 250, 'Quit Game', {
+      fontSize: '24px',
+      fontFamily: 'Press Start 2P',
+      color: '#CC4433',
+    });
+    quitText.setOrigin(0.5);
+    quitText.setScrollFactor(0);
+    quitText.setDepth(200);
+
+    quitButton.on('pointerdown', () => {
+      soundEffects.playButtonClick();
+      if (confirm('Are you sure you want to quit?')) {
+        window.close();
+      }
+    });
+
+    quitButton.on('pointerover', () => {
+      soundEffects.playButtonHover();
+      quitButton.setFillStyle(0x6A1010);
+    });
+
+    quitButton.on('pointerout', () => {
+      quitButton.setFillStyle(0x4A1010);
+    });
+
     // ESC key to resume
     this.input.keyboard.once('keydown-ESC', () => {
       this.scene.stop();

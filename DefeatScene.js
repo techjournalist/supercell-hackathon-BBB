@@ -12,9 +12,14 @@ export class DefeatScene extends Phaser.Scene {
   
   create(data) {
     const { width, height } = this.scale;
-    
+
     // Fade in
     this.cameras.main.fadeIn(500, 0, 0, 0);
+
+    this.input.keyboard.on('keydown-ESC', () => {
+      this.registry.set('skirmishDifficulty', null);
+      this.startTransition('MenuScene');
+    });
     
     // Check if challenge mode (especially endless)
     const challengeMode = data.challengeMode;
