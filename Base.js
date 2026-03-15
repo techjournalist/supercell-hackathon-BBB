@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { CONFIG } from './config.js';
+import { saveLevelStars } from './supabase.js';
 
 export class Base extends Phaser.GameObjects.Container {
   constructor(scene, x, y, isEnemy = false, spriteKey = null, factionId = 'roman') {
@@ -296,6 +297,12 @@ export class Base extends Phaser.GameObjects.Container {
         }
       }
       
+      // Save stars for completed level
+      const difficulty = this.scene.campaignDifficulty || 'normal';
+      const starsMap = { easy: 1, normal: 2, hard: 3 };
+      const starsEarned = starsMap[difficulty] || 2;
+      saveLevelStars(campaignType, this.scene.campaignLevel, difficulty, starsEarned);
+
       // If campaign complete, show special celebration scene
       if (campaignComplete) {
         console.log('🎉 CAMPAIGN COMPLETE! Showing celebration...');

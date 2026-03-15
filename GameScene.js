@@ -84,6 +84,7 @@ export class GameScene extends BaseGameScene {
     this.skirmishDifficulty = this.registry.get('skirmishDifficulty');
     this.challengeMode = this.registry.get('challengeMode');
     this.selectedFaction = this.registry.get('selectedFaction') || this.registry.get('playerFaction') || 'roman';
+    this.campaignDifficulty = this.registry.get('campaignDifficulty') || 'normal';
     
     // Calculate ground level
     this.groundY = height * 0.75;
@@ -215,8 +216,10 @@ export class GameScene extends BaseGameScene {
       } else {
         this.applyCampaignSettings();
       }
+      this.applyCampaignDifficulty();
     } else if (this.alienCampaign) {
       this.applyAlienCampaignSettings();
+      this.applyCampaignDifficulty();
     }
     
     // Apply skirmish difficulty settings if in skirmish mode
@@ -4790,6 +4793,38 @@ export class GameScene extends BaseGameScene {
     this.showObjectiveText();
   }
   
+  applyCampaignDifficulty() {
+    if (!this.campaignDifficulty || this.campaignDifficulty === 'normal') return;
+
+    if (this.campaignDifficulty === 'easy') {
+      this.gold = (this.gold || 0) + 100;
+      this.aiSpawnMultiplier = (this.aiSpawnMultiplier || 1) * 1.6;
+      this.aiSpellsEnabled = false;
+      this.aiUpgradesEnabled = false;
+      this.aiResourceMultiplier = (this.aiResourceMultiplier || 1) * 0.8;
+      if (this.survivalGoal) this.survivalGoal = Math.floor(this.survivalGoal * 1.5);
+      if (this.waveSpawnInterval) this.waveSpawnInterval = Math.floor(this.waveSpawnInterval * 1.5);
+      if (this.enemyBase) {
+        this.enemyBase.health = Math.floor(this.enemyBase.health * 0.7);
+        this.enemyBase.maxHealth = Math.floor(this.enemyBase.maxHealth * 0.7);
+      }
+    } else if (this.campaignDifficulty === 'hard') {
+      this.gold = Math.max(0, (this.gold || 0) - 50);
+      this.aiSpawnMultiplier = (this.aiSpawnMultiplier || 1) * 0.65;
+      this.aiSpellsEnabled = true;
+      this.aiUpgradesEnabled = true;
+      this.aiMaxUpgrades = 10;
+      this.aiResourceMultiplier = (this.aiResourceMultiplier || 1) * 1.2;
+      this.enemyGold = (this.enemyGold || 0) + 150;
+      if (this.survivalGoal) this.survivalGoal = Math.floor(this.survivalGoal * 0.75);
+      if (this.waveSpawnInterval) this.waveSpawnInterval = Math.floor(this.waveSpawnInterval * 0.7);
+      if (this.enemyBase) {
+        this.enemyBase.health = Math.floor(this.enemyBase.health * 1.5);
+        this.enemyBase.maxHealth = Math.floor(this.enemyBase.maxHealth * 1.5);
+      }
+    }
+  }
+
   applySkirmishDifficulty() {
     // Clear default units for skirmish - both sides start fresh
     this.playerUnits.forEach(u => u.destroy());

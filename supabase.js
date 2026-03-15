@@ -133,6 +133,70 @@ export async function getLeaderboard(gameMode = null, limit = 20) {
   }
 }
 
+export async function saveLevelStars(campaignType, levelNum, difficulty, starsEarned) {
+  try {
+    const localKey = `levelStars`;
+    const starMap = JSON.parse(localStorage.getItem(localKey) || '{}');
+    const mapKey = `${campaignType}_${levelNum}_${difficulty}`;
+    const existing = starMap[mapKey] || 0;
+    const newStars = Math.max(existing, starsEarned);
+    starMap[mapKey] = newStars;
+    localStorage.setItem(localKey, JSON.stringify(starMap));
+
+    const { data: existingRow } = await supabase
+      .from('campaign_level_stars')
+      .select('id, stars_earned')
+      .eq('session_id', sessionId)
+      .eq('campaign_type', campaignType)
+      .eq('level_num', levelNum)
+      .eq('difficulty', difficulty)
+      .maybeSingle();
+
+    if (existingRow) {
+      if (starsEarned > existingRow.stars_earned) {
+        const { error } = await supabase
+          .from('campaign_level_stars')
+          .update({ stars_earned: starsEarned, completed_at: new Date().toISOString() })
+          .eq('id', existingRow.id);
+        if (error) console.warn('saveLevelStars update error:', error.message);
+      }
+    } else {
+      const { error } = await supabase.from('campaign_level_stars').insert({
+        session_id: sessionId,
+        campaign_type: campaignType,
+        level_num: levelNum,
+        difficulty,
+        stars_earned: starsEarned,
+      });
+      if (error) console.warn('saveLevelStars insert error:', error.message);
+    }
+  } catch (e) {
+    console.warn('saveLevelStars failed:', e);
+  }
+}
+
+export async function getAllLevelStars() {
+  try {
+    const { data, error } = await supabase
+      .from('campaign_level_stars')
+      .select('campaign_type, level_num, difficulty, stars_earned')
+      .eq('session_id', sessionId);
+    if (error) console.warn('getAllLevelStars error:', error.message);
+
+    const starMap = {};
+    (data || []).forEach(row => {
+      const key = `${row.campaign_type}_${row.level_num}_${row.difficulty}`;
+      starMap[key] = row.stars_earned;
+    });
+
+    localStorage.setItem('levelStars', JSON.stringify(starMap));
+    return starMap;
+  } catch (e) {
+    console.warn('getAllLevelStars failed:', e);
+    return JSON.parse(localStorage.getItem('levelStars') || '{}');
+  }
+}
+
 export async function updatePlayerStats(won, faction, timeSeconds, kills) {
   try {
     const factionWinKey = `${faction}_wins`;
