@@ -27,13 +27,19 @@ import { AudioSettingsScene } from './AudioSettingsScene.js';
 
 const config = {
   type: Phaser.AUTO,
+  parent: 'game-container',
   scale: {
     mode: Phaser.Scale.RESIZE,
     autoCenter: Phaser.Scale.CENTER_BOTH,
-    width: '100%',
-    height: '100%',
+    width: window.innerWidth,
+    height: window.innerHeight,
   },
   backgroundColor: '#1a0033',
+  render: {
+    antialias: true,
+    powerPreference: 'high-performance',
+    failIfMajorPerformanceCaveat: false,
+  },
   physics: {
     default: 'arcade',
     arcade: {
@@ -68,8 +74,6 @@ const config = {
     LeaderboardScene,
     AudioSettingsScene
   ],
-  pixelArt: false,
-  antialias: true,
 };
 
 const game = new Phaser.Game(config);
