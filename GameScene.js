@@ -261,7 +261,12 @@ export class GameScene extends BaseGameScene {
     // Game speed control
     this.gameSpeed = 1;  // 1x, 2x, 3x, 4x, 5x, 10x, or 20x
     this.game.loop.timeScale = 1;  // Reset game speed
-    
+
+    // Schedule first-use spell hint (30s delay, shown once per session)
+    if (!sessionStorage.getItem('spellHintShown')) {
+      this.time.delayedCall(30000, () => this._showSpellHint());
+    }
+
     // Fade in from black
     this.cameras.main.fadeIn(500, 0, 0, 0);
   }
@@ -340,6 +345,12 @@ export class GameScene extends BaseGameScene {
         this.cameraScrolling.right = true;
       } else {
         this.cameraScrolling.right = false;
+      }
+
+      // Update spell radius preview cursor position
+      if (this._spellRadiusCursor && this.activeSpell) {
+        const worldX = pointer.x + this.cameras.main.scrollX;
+        this._spellRadiusCursor.setPosition(worldX, pointer.y);
       }
     });
 
@@ -602,16 +613,16 @@ export class GameScene extends BaseGameScene {
 
     currentX += 100;
     
-    // MANA DISPLAY - responsive size with glow
-    this.manaCrystal = this.add.polygon(currentX + 12, centerY, 
-      [0, -10, 8, -5, 8, 5, 0, 10, -8, 5, -8, -5], 
+    // MANA DISPLAY - crystal icon + progress bar + regen rate
+    this.manaCrystal = this.add.polygon(currentX + 10, centerY - 4,
+      [0, -10, 8, -5, 8, 5, 0, 10, -8, 5, -8, -5],
       CONFIG.COLORS.mana);
     this.manaCrystal.setStrokeStyle(2, 0x0099CC);
     this.manaCrystal.setScrollFactor(0);
     this.manaCrystal.setDepth(101);
-    
+
     // Add glow effect to mana crystal
-    const manaGlow = this.add.circle(currentX + 12, centerY, 13, 0x60a0f0, 0);
+    const manaGlow = this.add.circle(currentX + 10, centerY - 4, 13, 0x60a0f0, 0);
     manaGlow.setScrollFactor(0);
     manaGlow.setDepth(100);
     this.tweens.add({
@@ -623,19 +634,51 @@ export class GameScene extends BaseGameScene {
       ease: 'Sine.easeInOut',
       delay: 400
     });
-    
-    this.manaText = this.add.text(currentX + 30, centerY, `${this.mana}`, {
-      fontSize: `${resourceFontSize}px`,
+
+    const manaBarX = currentX + 26;
+    const manaBarW = 72;
+    const manaBarH = 10;
+
+    // Bar background
+    const manaBarBg = this.add.rectangle(manaBarX, centerY - 8, manaBarW, manaBarH, 0x0a1a2e);
+    manaBarBg.setOrigin(0, 0.5);
+    manaBarBg.setStrokeStyle(1, 0x224466);
+    manaBarBg.setScrollFactor(0);
+    manaBarBg.setDepth(101);
+
+    // Bar fill
+    this.manaBarFill = this.add.rectangle(manaBarX, centerY - 8, manaBarW, manaBarH, 0x3070d0);
+    this.manaBarFill.setOrigin(0, 0.5);
+    this.manaBarFill.setScrollFactor(0);
+    this.manaBarFill.setDepth(102);
+
+    // Number overlay centered on bar
+    this.manaText = this.add.text(manaBarX + manaBarW / 2, centerY - 8, `${Math.floor(this.mana)}/${CONFIG.MAX_MANA}`, {
+      fontSize: '8px',
       fontFamily: 'Arial, sans-serif',
       fontStyle: 'bold',
+      color: '#FFFFFF',
+      stroke: '#000000',
+      strokeThickness: 2,
+    });
+    this.manaText.setOrigin(0.5, 0.5);
+    this.manaText.setScrollFactor(0);
+    this.manaText.setDepth(103);
+
+    // Regen rate label beneath bar
+    this._manaRegenText = this.add.text(manaBarX, centerY + 3, '+1.2/s', {
+      fontSize: '8px',
+      fontFamily: 'Arial, sans-serif',
       color: '#60a0f0',
       stroke: '#000000',
-      strokeThickness: 3,
+      strokeThickness: 2,
     });
-    this.manaText.setOrigin(0, 0.5);
-    this.manaText.setScrollFactor(0);
-    this.manaText.setDepth(101);
-    currentX += 100;
+    this._manaRegenText.setOrigin(0, 0.5);
+    this._manaRegenText.setScrollFactor(0);
+    this._manaRegenText.setDepth(101);
+
+    this._manaBarMaxW = manaBarW;
+    currentX += 110;
     
     // DIVIDER
     const divider1 = this.add.rectangle(currentX, centerY, 2, topBarHeight - 20, 0x666666);
@@ -1163,26 +1206,38 @@ export class GameScene extends BaseGameScene {
     currentX += 15;
     
     // SPELL BUTTONS - faction-aware
+    const spellSectionStartX = currentX;
     if (this.vikingCampaign) {
-      this.createSpellButton(currentX, centerY, buttonSize, 'thorLightning', '⚡', CONFIG.THORS_LIGHTNING.cost, 0xFFD700);
+      this.createSpellButton(currentX, centerY, buttonSize, 'thorLightning', '⚡', CONFIG.THORS_LIGHTNING.cost, 0xFFD700, 'THOR');
       currentX += buttonSize + spacing;
-      this.createSpellButton(currentX, centerY, buttonSize, 'battleRage', '🪓', CONFIG.BATTLE_RAGE.cost, 0xFF4400);
+      this.createSpellButton(currentX, centerY, buttonSize, 'battleRage', '🪓', CONFIG.BATTLE_RAGE.cost, 0xFF4400, 'RAGE');
       currentX += buttonSize + spacing;
-      this.createSpellButton(currentX, centerY, buttonSize, 'frostShield', '❄️', CONFIG.FROST_SHIELD.cost, 0x44DDFF);
+      this.createSpellButton(currentX, centerY, buttonSize, 'frostShield', '❄️', CONFIG.FROST_SHIELD.cost, 0x44DDFF, 'FROST');
       currentX += buttonSize + spacing + 15;
     } else if (this.alienCampaign) {
-      this.createSpellButton(currentX, centerY, buttonSize, 'mindControl', '🧠', CONFIG.MIND_CONTROL.cost, 0x00FF88);
+      this.createSpellButton(currentX, centerY, buttonSize, 'mindControl', '🧠', CONFIG.MIND_CONTROL.cost, 0x00FF88, 'MIND');
       currentX += buttonSize + spacing;
-      this.createSpellButton(currentX, centerY, buttonSize, 'plasmaBomb', '💥', CONFIG.PLASMA_BOMB.cost, 0xFF6600);
+      this.createSpellButton(currentX, centerY, buttonSize, 'plasmaBomb', '💥', CONFIG.PLASMA_BOMB.cost, 0xFF6600, 'BOMB');
       currentX += buttonSize + spacing + 15;
     } else {
-      this.createSpellButton(currentX, centerY, buttonSize, 'shieldWall', '🛡️', CONFIG.SHIELD_WALL.cost, 0xFFD700);
+      this.createSpellButton(currentX, centerY, buttonSize, 'shieldWall', '🛡️', CONFIG.SHIELD_WALL.cost, 0xFFD700, 'SHLD');
       currentX += buttonSize + spacing;
-      this.createSpellButton(currentX, centerY, buttonSize, 'rainOfPila', '⚔️', CONFIG.RAIN_OF_PILA.cost, 0xFF6600);
+      this.createSpellButton(currentX, centerY, buttonSize, 'rainOfPila', '⚔️', CONFIG.RAIN_OF_PILA.cost, 0xFF6600, 'RAIN');
       currentX += buttonSize + spacing;
-      this.createSpellButton(currentX, centerY, buttonSize, 'healingSpring', '💧', CONFIG.HEALING_SPRING.cost, 0x00CED1);
+      this.createSpellButton(currentX, centerY, buttonSize, 'healingSpring', '💧', CONFIG.HEALING_SPRING.cost, 0x00CED1, 'HEAL');
       currentX += buttonSize + spacing + 15;
     }
+    const spellSectionMidX = (spellSectionStartX + currentX - 15) / 2;
+    const spellSectionLabel = this.add.text(spellSectionMidX, 4, 'SPELLS', {
+      fontSize: '7px',
+      fontFamily: 'Press Start 2P',
+      color: '#AAAAAA',
+      stroke: '#000000',
+      strokeThickness: 1,
+    });
+    spellSectionLabel.setOrigin(0.5, 0);
+    spellSectionLabel.setScrollFactor(0);
+    spellSectionLabel.setDepth(103);
 
     // DIVIDER
     const divider3 = this.add.rectangle(currentX, centerY, 2, 50, 0x666666);
@@ -1220,39 +1275,52 @@ export class GameScene extends BaseGameScene {
     this.createBattleIntensityIndicator(rightX + 200, centerY);
   }
   
-  createSpellButton(x, y, size, spellKey, icon, cost, borderColor) {
+  createSpellButton(x, y, size, spellKey, icon, cost, borderColor, shortName) {
     const button = this.add.rectangle(x, y, size, size, 0x2C2C2C);
     button.setInteractive({ useHandCursor: true });
     button.setStrokeStyle(2, borderColor);
     button.setScrollFactor(0);
     button.setDepth(101);
-    
-    const spellIcon = this.add.text(x, y - 8, icon, { fontSize: '20px' });
+
+    const spellIcon = this.add.text(x, y - 6, icon, { fontSize: '18px' });
     spellIcon.setOrigin(0.5);
     spellIcon.setScrollFactor(0);
     spellIcon.setDepth(102);
     
-    const costText = this.add.text(x, y + 17, `${cost}`, {
-      fontSize: '10px',
+    if (shortName) {
+      const nameLabel = this.add.text(x, y + 8, shortName, {
+        fontSize: '7px',
+        fontFamily: 'Press Start 2P',
+        color: '#CCCCCC',
+        stroke: '#000000',
+        strokeThickness: 1,
+      });
+      nameLabel.setOrigin(0.5);
+      nameLabel.setScrollFactor(0);
+      nameLabel.setDepth(102);
+    }
+
+    const costText = this.add.text(x, y + 18, `\u2666${cost}`, {
+      fontSize: '8px',
       fontFamily: 'Press Start 2P',
-      color: '#00FFFF',
+      color: '#60a0f0',
       stroke: '#000000',
       strokeThickness: 2,
     });
     costText.setOrigin(0.5);
     costText.setScrollFactor(0);
     costText.setDepth(102);
-    
+
     // Hotkey indicator (top-left corner) - Q/W/E/R based on spell order
     const spellOrder = Object.keys(this.spellButtons || {}).length;
     const hotkeyLetter = ['Q', 'W', 'E', 'R'][spellOrder];
     if (hotkeyLetter) {
-      const hotkeyText = this.add.text(x - size/2 + 5, y - size/2 + 3, hotkeyLetter, {
+      const hotkeyText = this.add.text(x - size/2 + 4, y - size/2 + 3, hotkeyLetter, {
         fontSize: '9px',
         fontFamily: 'Press Start 2P',
-        color: '#AAAAAA',
+        color: '#FFD700',
         stroke: '#000000',
-        strokeThickness: 1,
+        strokeThickness: 2,
       });
       hotkeyText.setOrigin(0);
       hotkeyText.setScrollFactor(0);
@@ -3072,6 +3140,117 @@ export class GameScene extends BaseGameScene {
     }
   }
 
+  _showSpellImpactFlash(spellName, worldX, worldY) {
+    const radius = this._getSpellRadius(spellName);
+    if (!radius) return;
+    const color = this._getSpellColor(spellName);
+    const flash = this.add.graphics();
+    flash.setDepth(498);
+    flash.lineStyle(3, color, 1);
+    flash.strokeCircle(0, 0, radius);
+    flash.fillStyle(color, 0.22);
+    flash.fillCircle(0, 0, radius);
+    flash.setPosition(worldX, worldY);
+    this.tweens.add({
+      targets: flash,
+      alpha: 0,
+      scaleX: 1.15,
+      scaleY: 1.15,
+      duration: 700,
+      ease: 'Power2',
+      onComplete: () => flash.destroy(),
+    });
+  }
+
+  _showSpellHint() {
+    if (this.isGameOver || this.stats.spellsCast > 0) return;
+    sessionStorage.setItem('spellHintShown', '1');
+    const { width } = this.scale;
+    const firstSpellKey = this.spellButtons ? Object.keys(this.spellButtons)[0] : null;
+    let arrowX = width / 2;
+    if (firstSpellKey && this.spellButtons[firstSpellKey]) {
+      arrowX = this.spellButtons[firstSpellKey].x;
+    }
+
+    const hintBg = this.add.rectangle(arrowX, 80, 260, 44, 0x000000, 0.9);
+    hintBg.setStrokeStyle(2, 0x00CCFF);
+    hintBg.setScrollFactor(0);
+    hintBg.setDepth(600);
+
+    const hintText = this.add.text(arrowX, 72, 'TIP: Click a SPELL button,', {
+      fontSize: '7px',
+      fontFamily: 'Press Start 2P',
+      color: '#00CCFF',
+      stroke: '#000000',
+      strokeThickness: 2,
+    });
+    hintText.setOrigin(0.5);
+    hintText.setScrollFactor(0);
+    hintText.setDepth(601);
+
+    const hintText2 = this.add.text(arrowX, 86, 'then click the battlefield to cast!', {
+      fontSize: '7px',
+      fontFamily: 'Press Start 2P',
+      color: '#FFFFFF',
+      stroke: '#000000',
+      strokeThickness: 2,
+    });
+    hintText2.setOrigin(0.5);
+    hintText2.setScrollFactor(0);
+    hintText2.setDepth(601);
+
+    const arrow = this.add.text(arrowX, 100, '^ ^ ^', {
+      fontSize: '9px',
+      fontFamily: 'Press Start 2P',
+      color: '#00CCFF',
+      stroke: '#000000',
+      strokeThickness: 2,
+    });
+    arrow.setOrigin(0.5, 0);
+    arrow.setScrollFactor(0);
+    arrow.setDepth(601);
+
+    const hintObjs = [hintBg, hintText, hintText2, arrow];
+
+    this.tweens.add({
+      targets: hintObjs,
+      alpha: { from: 0, to: 1 },
+      duration: 400,
+    });
+
+    const dismiss = () => {
+      this.tweens.add({
+        targets: hintObjs,
+        alpha: 0,
+        duration: 400,
+        onComplete: () => hintObjs.forEach(o => o.destroy()),
+      });
+    };
+
+    this.time.delayedCall(6000, dismiss);
+    this.input.once('pointerdown', dismiss);
+  }
+
+  _triggerSpellReadyPulse(spellKey) {
+    if (!this.spellButtons || !this.spellButtons[spellKey]) return;
+    if (!this._spellReadyTweens) this._spellReadyTweens = {};
+    if (this._spellReadyTweens[spellKey]) return;
+    const btn = this.spellButtons[spellKey].button;
+    const tween = this.tweens.add({
+      targets: btn,
+      alpha: { from: 1, to: 0.55 },
+      duration: 300,
+      yoyo: true,
+      repeat: 2,
+      ease: 'Sine.easeInOut',
+      onComplete: () => {
+        if (btn && btn.scene) btn.setAlpha(1);
+        delete this._spellReadyTweens[spellKey];
+      },
+    });
+    this._spellReadyTweens[spellKey] = { targets: btn, tween };
+  }
+
   _cancelSpellTargeting() {
     if (this._pendingSpellListener) {
       this.input.off('pointerdown', this._pendingSpellListener);
@@ -3083,9 +3262,37 @@ export class GameScene extends BaseGameScene {
     this._hideSpellTargetIndicator();
   }
 
+  _getSpellRadius(spellName) {
+    const radiusMap = {
+      shieldWall: CONFIG.SHIELD_WALL.radius,
+      rainOfPila: CONFIG.RAIN_OF_PILA.radius,
+      healingSpring: CONFIG.HEALING_SPRING.radius,
+      battleRage: CONFIG.BATTLE_RAGE.radius,
+      frostShield: CONFIG.FROST_SHIELD.radius,
+      plasmaBomb: CONFIG.PLASMA_BOMB.radius,
+      thorLightning: CONFIG.THORS_LIGHTNING.range,
+      mindControl: CONFIG.MIND_CONTROL.range,
+    };
+    return radiusMap[spellName] || 0;
+  }
+
+  _getSpellColor(spellName) {
+    const colorMap = {
+      shieldWall: 0xFFD700,
+      rainOfPila: 0xFF4400,
+      healingSpring: 0x00CED1,
+      battleRage: 0xFF4400,
+      frostShield: 0x44DDFF,
+      plasmaBomb: 0xFF6600,
+      thorLightning: 0xFFD700,
+      mindControl: 0x00FF88,
+    };
+    return colorMap[spellName] || 0xFFFFFF;
+  }
+
   _showSpellTargetIndicator(spellName) {
     this._hideSpellTargetIndicator();
-    const { width } = this.scale;
+    const { width, height } = this.scale;
     const spellNames = {
       shieldWall: 'SHIELD WALL',
       rainOfPila: 'RAIN OF PILA',
@@ -3097,27 +3304,66 @@ export class GameScene extends BaseGameScene {
       plasmaBomb: 'PLASMA BOMB',
     };
     const label = spellNames[spellName] || spellName.toUpperCase();
-    this._spellIndicatorBg = this.add.rectangle(width / 2, 100, 340, 36, 0x000000, 0.75);
+    const bannerY = Math.floor(height * 0.42);
+
+    this._spellIndicatorBg = this.add.rectangle(width / 2, bannerY, 420, 52, 0x000000, 0.88);
     this._spellIndicatorBg.setScrollFactor(0);
     this._spellIndicatorBg.setDepth(500);
-    this._spellIndicatorBg.setStrokeStyle(2, 0xFF6600);
-    this._spellIndicatorText = this.add.text(width / 2, 100, `CLICK TO CAST: ${label}   [ESC to cancel]`, {
-      fontSize: '9px',
+    this._spellIndicatorBg.setStrokeStyle(3, this._getSpellColor(spellName));
+
+    this._spellIndicatorText = this.add.text(width / 2, bannerY - 7, `CASTING: ${label}`, {
+      fontSize: '12px',
       fontFamily: 'Press Start 2P',
-      color: '#FF6600',
+      color: '#FFFFFF',
       stroke: '#000000',
-      strokeThickness: 2,
+      strokeThickness: 3,
     });
     this._spellIndicatorText.setOrigin(0.5);
     this._spellIndicatorText.setScrollFactor(0);
     this._spellIndicatorText.setDepth(501);
+
+    this._spellIndicatorSub = this.add.text(width / 2, bannerY + 12, 'CLICK on the battlefield to cast   [ESC] cancel', {
+      fontSize: '7px',
+      fontFamily: 'Press Start 2P',
+      color: '#AAAAAA',
+      stroke: '#000000',
+      strokeThickness: 2,
+    });
+    this._spellIndicatorSub.setOrigin(0.5);
+    this._spellIndicatorSub.setScrollFactor(0);
+    this._spellIndicatorSub.setDepth(501);
+
     this.tweens.add({
-      targets: [this._spellIndicatorBg, this._spellIndicatorText],
-      alpha: { from: 0.3, to: 1 },
-      duration: 400,
+      targets: [this._spellIndicatorBg, this._spellIndicatorText, this._spellIndicatorSub],
+      alpha: { from: 0.5, to: 1 },
+      duration: 350,
       yoyo: true,
       repeat: -1,
     });
+
+    // Radius preview circle that follows the cursor
+    const radius = this._getSpellRadius(spellName);
+    if (radius > 0) {
+      this._spellRadiusCursor = this.add.graphics();
+      this._spellRadiusCursor.setDepth(499);
+      const color = this._getSpellColor(spellName);
+      this._spellRadiusCursor.lineStyle(2, color, 0.7);
+      this._spellRadiusCursor.strokeCircle(0, 0, radius);
+      this._spellRadiusCursor.fillStyle(color, 0.08);
+      this._spellRadiusCursor.fillCircle(0, 0, radius);
+      const ptr = this.input.activePointer;
+      if (ptr) {
+        this._spellRadiusCursor.setPosition(ptr.x + this.cameras.main.scrollX, ptr.y);
+      }
+
+      this.tweens.add({
+        targets: this._spellRadiusCursor,
+        alpha: { from: 0.4, to: 1 },
+        duration: 600,
+        yoyo: true,
+        repeat: -1,
+      });
+    }
   }
 
   _hideSpellTargetIndicator() {
@@ -3130,6 +3376,16 @@ export class GameScene extends BaseGameScene {
       this.tweens.killTweensOf(this._spellIndicatorText);
       this._spellIndicatorText.destroy();
       this._spellIndicatorText = null;
+    }
+    if (this._spellIndicatorSub) {
+      this.tweens.killTweensOf(this._spellIndicatorSub);
+      this._spellIndicatorSub.destroy();
+      this._spellIndicatorSub = null;
+    }
+    if (this._spellRadiusCursor) {
+      this.tweens.killTweensOf(this._spellRadiusCursor);
+      this._spellRadiusCursor.destroy();
+      this._spellRadiusCursor = null;
     }
   }
   
@@ -3165,6 +3421,9 @@ export class GameScene extends BaseGameScene {
     }
 
     if (!spellConfig) return;
+
+    // Show impact radius flash to confirm the cast location
+    this._showSpellImpactFlash(spellName, x, y);
 
     // Track stat
     this.stats.spellsCast++;
@@ -6226,7 +6485,12 @@ export class GameScene extends BaseGameScene {
     }
     
     // Update mana display
-    this.manaText.setText(`${Math.floor(this.mana)}`);
+    const manaFloor = Math.floor(this.mana);
+    this.manaText.setText(`${manaFloor}/${CONFIG.MAX_MANA}`);
+    if (this.manaBarFill && this._manaBarMaxW) {
+      const pct = Math.min(1, this.mana / CONFIG.MAX_MANA);
+      this.manaBarFill.setSize(Math.max(1, this._manaBarMaxW * pct), this.manaBarFill.height);
+    }
     
     // Update player base health bar UI
     if (this.playerBaseHealthBarFill && this.playerBase && !this.playerBase.isDead) {
@@ -6328,7 +6592,56 @@ export class GameScene extends BaseGameScene {
       // Update aqueduct particles
       this.aqueduct.update(time, delta);
     }
-    
+
+    // Update mana regen rate display
+    if (this._manaRegenText) {
+      let totalRegen = CONFIG.PASSIVE_MANA_REGEN;
+      if (this.aqueduct) totalRegen += this.aqueduct.getManaRate();
+      if (this.odinsBlessing && this.odinsManaRate) totalRegen += this.odinsManaRate;
+      this._manaRegenText.setText(`+${totalRegen.toFixed(1)}/s`);
+    }
+
+    // Update spell-radius cursor preview
+    if (this._spellRadiusCursor && this.activeSpell) {
+      const ptr = this.input.activePointer;
+      if (ptr) {
+        this._spellRadiusCursor.setPosition(ptr.x + this.cameras.main.scrollX, ptr.y);
+      }
+    }
+
+    // Update spell ready pulses: stop tween once cast or goes on cooldown
+    if (this._spellReadyTweens) {
+      for (const key in this._spellReadyTweens) {
+        const cd = this.spellCooldowns[key] || 0;
+        const cost = this.getSpellCost(key);
+        if (cd > 0 || this.mana < cost) {
+          const tw = this._spellReadyTweens[key];
+          if (tw) { this.tweens.killTweensOf(tw.targets); }
+          delete this._spellReadyTweens[key];
+          if (this.spellButtons && this.spellButtons[key]) {
+            this.spellButtons[key].button.setAlpha(cd > 0 ? 0.5 : 1);
+          }
+        }
+      }
+    }
+
+    // Trigger spell-ready pulse when a spell transitions to available
+    if (this.spellButtons && !this._spellPrevAvailable) {
+      this._spellPrevAvailable = {};
+    }
+    if (this.spellButtons) {
+      for (const key in this.spellButtons) {
+        const cd = this.spellCooldowns[key] || 0;
+        const cost = this.getSpellCost(key);
+        const isAvailable = cd <= 0 && this.mana >= cost;
+        const wasAvailable = this._spellPrevAvailable[key];
+        if (isAvailable && !wasAvailable) {
+          this._triggerSpellReadyPulse(key);
+        }
+        this._spellPrevAvailable[key] = isAvailable;
+      }
+    }
+
     // Update all cooldowns in unified loops (use scaledDelta to respect game speed)
     const uc = this.unitCooldowns;
     for (const key in uc) { if (uc[key] > 0) uc[key] -= scaledDelta; }
