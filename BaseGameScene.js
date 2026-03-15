@@ -5,22 +5,7 @@ export const SPRITE_SHEET_FRAME_WIDTH = 96;
 export const SPRITE_SHEET_FRAME_HEIGHT = 96;
 export const SPRITE_SHEET_FRAME_COUNT = 6;
 
-export const UNIT_SPRITE_SHEETS = {
-  'worker':      { walk: 'worker_walk.png',      attack: 'worker_attack.png' },
-  'legionary':   { walk: 'legionary_walk.png',   attack: 'legionary_attack.png', frameWidth: 424, frameHeight: 416 },
-  'pilum':       { walk: 'pilum_walk.png',        attack: 'pilum_attack.png' },
-  'centurion':   { walk: 'centurion_walk.png',    attack: 'centurion_attack.png' },
-  'scout':       { walk: 'scout_walk.png',        attack: 'scout_attack.png' },
-  'harvester':   { walk: 'harvester_walk.png',    attack: 'harvester_attack.png' },
-  'alien-scout': { walk: 'alien_scout_walk.png',  attack: 'alien_scout_attack.png' },
-  'drone':       { walk: 'drone_walk.png',        attack: 'drone_attack.png' },
-  'blaster':     { walk: 'blaster_walk.png',      attack: 'blaster_attack.png' },
-  'overlord':    { walk: 'overlord_walk.png',     attack: 'overlord_attack.png' },
-  'thrall':      { walk: 'thrall_walk.png',       attack: 'thrall_attack.png' },
-  'berserker':   { walk: 'berserker_walk.png',    attack: 'berserker_attack.png' },
-  'axeThrower':  { walk: 'axe_thrower_walk.png',  attack: 'axe_thrower_attack.png' },
-  'jarl':        { walk: 'jarl_walk.png',         attack: 'jarl_attack.png' },
-};
+export const UNIT_SPRITE_SHEETS = {};
 
 export class BaseGameScene extends Phaser.Scene {
   preloadGameAssets() {
@@ -102,33 +87,21 @@ export class BaseGameScene extends Phaser.Scene {
       const attackKey = `${key}_attack`;
 
       if (this.textures.exists(walkKey) && !this.anims.exists(walkKey)) {
-        const tex = this.textures.get(walkKey);
-        const frameCount = Object.keys(tex.frames).filter(k => k !== '__BASE').length;
-        console.log(`[Anim] ${walkKey}: texture exists, frameCount=${frameCount}, source size=${tex.source[0]?.width}x${tex.source[0]?.height}`);
-        if (frameCount > 0) {
-          this.anims.create({
-            key: walkKey,
-            frames: this.anims.generateFrameNumbers(walkKey, { start: 0, end: frameCount - 1 }),
-            frameRate: 10,
-            repeat: -1,
-          });
-          console.log(`[Anim] Created animation: ${walkKey} with ${frameCount} frames`);
-        } else {
-          console.warn(`[Anim] SKIPPING ${walkKey} - no parsed frames found`);
-        }
+        this.anims.create({
+          key: walkKey,
+          frames: this.anims.generateFrameNumbers(walkKey, { start: 0, end: SPRITE_SHEET_FRAME_COUNT - 1 }),
+          frameRate: 10,
+          repeat: -1,
+        });
       }
 
       if (this.textures.exists(attackKey) && !this.anims.exists(attackKey)) {
-        const tex = this.textures.get(attackKey);
-        const frameCount = Object.keys(tex.frames).filter(k => k !== '__BASE').length;
-        if (frameCount > 0) {
-          this.anims.create({
-            key: attackKey,
-            frames: this.anims.generateFrameNumbers(attackKey, { start: 0, end: frameCount - 1 }),
-            frameRate: 12,
-            repeat: 0,
-          });
-        }
+        this.anims.create({
+          key: attackKey,
+          frames: this.anims.generateFrameNumbers(attackKey, { start: 0, end: SPRITE_SHEET_FRAME_COUNT - 1 }),
+          frameRate: 12,
+          repeat: 0,
+        });
       }
     });
   }

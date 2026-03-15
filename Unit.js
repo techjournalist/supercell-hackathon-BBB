@@ -50,9 +50,7 @@ export class Unit extends Phaser.GameObjects.Container {
     this._hasSpritesheetAnims = !!this._walkAnimKey;
 
     const initialKey = (this._walkAnimKey && scene.textures.exists(walkTexKey)) ? walkTexKey : spriteKey;
-    console.log(`[Unit] ${config.name}: spriteKey=${spriteKey}, walkAnimKey=${this._walkAnimKey}, initialKey=${initialKey}, texExists=${scene.textures.exists(initialKey)}`);
     this.sprite = scene.add.sprite(0, 0, initialKey);
-    console.log(`[Unit] ${config.name}: sprite created, w=${this.sprite.width}, h=${this.sprite.height}`);
     this._baseScale = 0.15;
     this.sprite.setScale(this._baseScale);
     this.sprite.rotation = this._spawnTilt * (Math.PI / 180);
