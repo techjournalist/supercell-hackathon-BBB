@@ -36,12 +36,14 @@ export default defineConfig({
     target: 'esnext',
     copyPublicDir: false,
     minify: 'esbuild',
+    chunkSizeWarningLimit: 2000,
     rollupOptions: {
+      external: ['phaser'],
       output: {
+        globals: {
+          phaser: 'Phaser',
+        },
         manualChunks(id) {
-          if (id.includes('node_modules/phaser')) {
-            return 'phaser';
-          }
           if (id.includes('node_modules/tone')) {
             return 'tone';
           }
