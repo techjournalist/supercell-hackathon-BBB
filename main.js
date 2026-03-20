@@ -33,6 +33,7 @@ const config = {
     autoCenter: Phaser.Scale.CENTER_BOTH,
     width: window.innerWidth,
     height: window.innerHeight,
+    orientation: Phaser.Scale.LANDSCAPE,
   },
   backgroundColor: '#1a0033',
   render: {

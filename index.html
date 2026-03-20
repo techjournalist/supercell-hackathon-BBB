@@ -16,14 +16,62 @@
         background-color: #1a0033;
         overflow: hidden;
         touch-action: none;
+        -webkit-user-select: none;
+        user-select: none;
       }
       #game-container {
         width: 100%;
         height: 100%;
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+        box-sizing: border-box;
+      }
+      #portrait-blocker {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        background: #0a0010;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: #FFD700;
+        font-family: 'Press Start 2P', monospace;
+        text-align: center;
+        padding: 40px;
+        box-sizing: border-box;
+      }
+      #portrait-blocker .rotate-icon {
+        font-size: 64px;
+        margin-bottom: 24px;
+        animation: rotate-pulse 2s ease-in-out infinite;
+      }
+      #portrait-blocker h2 {
+        font-size: 16px;
+        margin: 0 0 16px 0;
+        line-height: 1.6;
+        color: #FFD700;
+      }
+      #portrait-blocker p {
+        font-size: 10px;
+        margin: 0;
+        color: #aaaaaa;
+        line-height: 1.8;
+      }
+      @keyframes rotate-pulse {
+        0%, 100% { transform: rotate(0deg) scale(1); }
+        50% { transform: rotate(90deg) scale(1.1); }
+      }
+      @media (orientation: portrait) and (max-width: 900px) {
+        #portrait-blocker { display: flex; }
       }
     </style>
   </head>
   <body>
+    <div id="portrait-blocker">
+      <div class="rotate-icon">&#8635;</div>
+      <h2>Rotate Your Device</h2>
+      <p>Blades, Beards &amp; Beams<br>requires landscape mode.</p>
+    </div>
     <div id="game-container"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
     <script type="module" src="main.js"></script>

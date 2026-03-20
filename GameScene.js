@@ -19,6 +19,7 @@ import { soundEffects } from './SoundEffectsManager.js';
 import { MusicManager } from './MusicManager.js';
 import { saveGameSession, submitLeaderboardEntry, updatePlayerStats, saveCampaignProgress } from './supabase.js';
 import { BaseGameScene } from './BaseGameScene.js';
+import { isMobile } from './MobileUtils.js';
 
 export class GameScene extends BaseGameScene {
   constructor() {
@@ -334,22 +335,38 @@ export class GameScene extends BaseGameScene {
     // Setup hotkey press handlers
     this.setupHotkeyHandlers();
     
-    // Mouse edge scrolling
+    const mobile = isMobile();
+
+    // Mouse edge scrolling (desktop only)
     this.input.on('pointermove', (pointer) => {
       if (this.isGameOver) return;
 
-      const screenWidth = this.scale.width;
-
-      if (pointer.x < CONFIG.CAMERA_EDGE_ZONE) {
-        this.cameraScrolling.left = true;
-      } else {
-        this.cameraScrolling.left = false;
+      if (!mobile) {
+        const screenWidth = this.scale.width;
+        if (pointer.x < CONFIG.CAMERA_EDGE_ZONE) {
+          this.cameraScrolling.left = true;
+        } else {
+          this.cameraScrolling.left = false;
+        }
+        if (pointer.x > screenWidth - CONFIG.CAMERA_EDGE_ZONE) {
+          this.cameraScrolling.right = true;
+        } else {
+          this.cameraScrolling.right = false;
+        }
       }
 
-      if (pointer.x > screenWidth - CONFIG.CAMERA_EDGE_ZONE) {
-        this.cameraScrolling.right = true;
-      } else {
-        this.cameraScrolling.right = false;
+      // Touch drag camera scroll (mobile)
+      if (mobile && this._touchDragging) {
+        const dx = pointer.x - this._touchLastX;
+        if (Math.abs(dx) > 2) {
+          this.cameras.main.scrollX -= dx;
+          this._touchLastX = pointer.x;
+          this._touchDidDrag = true;
+          if (this._longPressTimer) {
+            this._longPressTimer.remove();
+            this._longPressTimer = null;
+          }
+        }
       }
 
       // Update spell radius preview cursor position
@@ -359,15 +376,48 @@ export class GameScene extends BaseGameScene {
       }
     });
 
-    // Right-click sets rally point
+    // Pointer down: start touch drag + long-press rally timer
     this.input.on('pointerdown', (pointer) => {
-      if (this.isGameOver || pointer.rightButtonDown === undefined) return;
+      if (this.isGameOver) return;
+
+      if (mobile) {
+        const topBarH = this._mobileUI ? 56 : 70;
+        const bottomBarY = this._bottomBarY || (this.scale.height - 70);
+        if (pointer.y > topBarH && pointer.y < bottomBarY) {
+          this._touchDragging = true;
+          this._touchLastX = pointer.x;
+          this._touchStartX = pointer.x;
+          this._touchStartY = pointer.y;
+          this._touchDidDrag = false;
+
+          this._longPressTimer = this.time.delayedCall(500, () => {
+            if (!this._touchDidDrag) {
+              const worldX = pointer.x + this.cameras.main.scrollX;
+              this.setRallyPoint(worldX, pointer.y);
+            }
+            this._longPressTimer = null;
+          });
+        }
+        return;
+      }
+
+      // Desktop right-click rally
+      if (pointer.rightButtonDown === undefined) return;
       if (!pointer.rightButtonDown()) return;
-      if (pointer.y < 70) return; // Don't set rally in UI area
+      if (pointer.y < 70) return;
 
       const worldX = pointer.x + this.cameras.main.scrollX;
       const worldY = pointer.y;
       this.setRallyPoint(worldX, worldY);
+    });
+
+    // Pointer up: end touch drag
+    this.input.on('pointerup', () => {
+      this._touchDragging = false;
+      if (this._longPressTimer) {
+        this._longPressTimer.remove();
+        this._longPressTimer = null;
+      }
     });
   }
 
@@ -550,30 +600,32 @@ export class GameScene extends BaseGameScene {
   
   createUI() {
     const { width, height } = this.scale;
-    
+
+    this._mobileUI = isMobile() && width < 1000;
+
     // TOP BAR - Single horizontal toolbar (70px tall, full width)
-    const topBarHeight = 70;
-    
+    const topBarHeight = this._mobileUI ? 56 : 70;
+
     // Create top bar with gradient and gold border
     const topBarGraphics = this.add.graphics();
     topBarGraphics.setScrollFactor(0);
     topBarGraphics.setDepth(100);
-    
+
     // Gradient background: lighter at top, darker at bottom
     topBarGraphics.fillGradientStyle(0x0a050f, 0x0a050f, 0x05020a, 0x05020a, 0.95, 0.95, 0.95, 0.95);
     topBarGraphics.fillRect(0, 0, width, topBarHeight);
-    
+
     // Gold border at bottom
     topBarGraphics.lineStyle(1, 0xc9941a, 0.3);
     topBarGraphics.lineBetween(0, topBarHeight, width, topBarHeight);
-    
+
     const topBar = topBarGraphics;
-    
+
     let currentX = 20; // Start from left edge with padding
-    const buttonSize = 50;
-    const spacing = 8;
+    const buttonSize = this._mobileUI ? 44 : 50;
+    const spacing = this._mobileUI ? 6 : 8;
     const centerY = topBarHeight / 2;
-    
+
     // GOLD DISPLAY - responsive size with glow
     const resourceFontSize = Math.max(11, Math.min(width * 0.013, 15));
     
@@ -688,18 +740,28 @@ export class GameScene extends BaseGameScene {
     this._manaBarMaxW = manaBarW;
     currentX += 110;
     
-    // DIVIDER
-    const divider1 = this.add.rectangle(currentX, centerY, 2, topBarHeight - 20, 0x666666);
-    divider1.setScrollFactor(0);
-    divider1.setDepth(101);
-    currentX += 15;
-    
-    // Store starting position for unit buttons
-    this.uiStartX = currentX;
-    
-    // Create all buttons in single horizontal row
-    this.createSingleRowToolbar(currentX, centerY, buttonSize, spacing);
-    
+    if (!this._mobileUI) {
+      // DIVIDER
+      const divider1 = this.add.rectangle(currentX, centerY, 2, topBarHeight - 20, 0x666666);
+      divider1.setScrollFactor(0);
+      divider1.setDepth(101);
+      currentX += 15;
+
+      // Store starting position for unit buttons
+      this.uiStartX = currentX;
+
+      // Create all buttons in single horizontal row
+      this.createSingleRowToolbar(currentX, centerY, buttonSize, spacing);
+    } else {
+      // MOBILE: control buttons go in top bar (right side), unit/spell/upgrade go in bottom bar
+      this.uiStartX = currentX;
+      const mobileCtrlSize = 40;
+      const mobileCtrlSpacing = 5;
+      const mobileCtrlStartX = width - (5 * (mobileCtrlSize + mobileCtrlSpacing)) - 10;
+      this.createControlButtonsCompact(mobileCtrlStartX, centerY, mobileCtrlSize, mobileCtrlSpacing);
+      this.createMobileBottomBar(buttonSize, spacing);
+    }
+
     // Create enemy base health bar in top-right corner (for campaign)
     if (this.campaignLevel || this.vikingCampaign || this.alienCampaign || this.challengeMode) {
       this.createEnemyBaseHealthUI(width, topBarHeight);
@@ -1085,13 +1147,14 @@ export class GameScene extends BaseGameScene {
   createMinimap() {
     const { width, height } = this.scale;
     const minimapHeight = 30;
-    const minimapY = height - minimapHeight / 2;  // At very bottom
-    
+    const bottomOffset = this._mobileUI ? 70 : 0;
+    const minimapY = height - bottomOffset - minimapHeight / 2;
+
     this.minimap = new Minimap(
       this,
       width / 2,
       minimapY,
-      width,  // Full width
+      width,
       minimapHeight
     );
   }
@@ -1455,7 +1518,266 @@ export class GameScene extends BaseGameScene {
     // Battle intensity indicator (subtle, near mute button)
     this.createBattleIntensityIndicator(rightX + 200, centerY);
   }
-  
+
+  createMobileBottomBar(buttonSize, spacing) {
+    const { width, height } = this.scale;
+    const barHeight = 70;
+    const barY = height - barHeight;
+
+    this._bottomBarVisible = true;
+    this._bottomBarY = barY;
+    this._bottomBarHeight = barHeight;
+
+    const barBg = this.add.graphics();
+    barBg.setScrollFactor(0);
+    barBg.setDepth(100);
+    barBg.fillGradientStyle(0x05020a, 0x05020a, 0x0a050f, 0x0a050f, 0.97, 0.97, 0.97, 0.97);
+    barBg.fillRect(0, barY, width, barHeight);
+    barBg.lineStyle(1, 0xc9941a, 0.4);
+    barBg.lineBetween(0, barY, width, barY);
+    this._bottomBarBg = barBg;
+
+    const toggleBtnW = 54;
+    const toggleBtnH = 18;
+    const toggleY = barY - 1;
+
+    const toggleBg = this.add.graphics();
+    toggleBg.setScrollFactor(0);
+    toggleBg.setDepth(102);
+    toggleBg.fillStyle(0x1a0f00, 0.95);
+    toggleBg.fillRoundedRect(width / 2 - toggleBtnW / 2, toggleY - toggleBtnH, toggleBtnW, toggleBtnH, 6);
+    toggleBg.lineStyle(1, 0xc9941a, 0.5);
+    toggleBg.strokeRoundedRect(width / 2 - toggleBtnW / 2, toggleY - toggleBtnH, toggleBtnW, toggleBtnH, 6);
+    this._bottomBarToggleBg = toggleBg;
+
+    this._bottomBarToggleText = this.add.text(width / 2, toggleY - toggleBtnH / 2, '▼ CMDS', {
+      fontSize: '8px',
+      fontFamily: 'Press Start 2P',
+      color: '#c9941a',
+    });
+    this._bottomBarToggleText.setOrigin(0.5);
+    this._bottomBarToggleText.setScrollFactor(0);
+    this._bottomBarToggleText.setDepth(103);
+
+    const toggleZone = this.add.zone(width / 2, toggleY - toggleBtnH / 2, toggleBtnW + 20, toggleBtnH + 16);
+    toggleZone.setScrollFactor(0);
+    toggleZone.setDepth(103);
+    toggleZone.setInteractive();
+    toggleZone.on('pointerdown', () => this._toggleMobileBottomBar());
+
+    this._bottomBarObjects = [barBg, toggleBg, this._bottomBarToggleText, toggleZone];
+
+    const centerY = barY + barHeight / 2;
+    let currentX = 20;
+
+    this.unitButtons = [];
+    this.spellButtons = {};
+    this.upgradeButtons = {};
+
+    this.createTooltip();
+
+    let unitConfig;
+    if (this.vikingCampaign) {
+      unitConfig = CONFIG.VIKING_UNITS;
+    } else if (this.alienCampaign) {
+      unitConfig = CONFIG.ALIEN_UNITS;
+    } else {
+      unitConfig = CONFIG.UNITS;
+    }
+
+    const units = Object.entries(unitConfig);
+    units.forEach(([key, config], index) => {
+      const x = currentX + (buttonSize / 2) + index * (buttonSize + spacing);
+
+      const button = this.add.rectangle(x, centerY, buttonSize, buttonSize, 0x2C2C2C);
+      button.setInteractive({ useHandCursor: true });
+      button.setStrokeStyle(2, 0x555555);
+      button.setScrollFactor(0);
+      button.setDepth(101);
+
+      let iconKey;
+      if (key === 'worker') iconKey = 'worker';
+      else if (key === 'legionary') iconKey = 'legionary';
+      else if (key === 'pilum') iconKey = 'pilum';
+      else if (key === 'centurion') iconKey = 'centurion';
+      else if (key === 'scout') iconKey = 'scout';
+      else if (key === 'thrall') iconKey = 'thrall';
+      else if (key === 'berserker') iconKey = 'berserker';
+      else if (key === 'axeThrower') iconKey = 'axeThrower';
+      else if (key === 'jarl') iconKey = 'jarl';
+      else if (key === 'harvester') iconKey = 'harvester';
+      else if (key === 'drone') iconKey = 'drone';
+      else if (key === 'blaster') iconKey = 'blaster';
+      else if (key === 'overlord') iconKey = 'overlord';
+
+      const icon = this.add.sprite(x, centerY - 5, iconKey);
+      const vikingIconKeys = ['thrall', 'berserker', 'axeThrower', 'jarl'];
+      icon.setScale(vikingIconKeys.includes(iconKey) ? 0.28 : 0.06);
+      icon.setScrollFactor(0);
+      icon.setDepth(102);
+
+      const costText = this.add.text(x, centerY + 18, `${config.cost}`, {
+        fontSize: '9px',
+        fontFamily: 'Press Start 2P',
+        color: '#FFD700',
+        stroke: '#000000',
+        strokeThickness: 2,
+      });
+      costText.setOrigin(0.5);
+      costText.setScrollFactor(0);
+      costText.setDepth(102);
+
+      const hotkeyText = this.add.text(x - buttonSize / 2 + 4, centerY - buttonSize / 2 + 3, `${index + 1}`, {
+        fontSize: '8px',
+        fontFamily: 'Press Start 2P',
+        color: '#AAAAAA',
+        stroke: '#000000',
+        strokeThickness: 1,
+      });
+      hotkeyText.setOrigin(0);
+      hotkeyText.setScrollFactor(0);
+      hotkeyText.setDepth(103);
+
+      const progressFill = this.add.rectangle(x, centerY, 0, buttonSize, 0x4CAF50, 0.5);
+      progressFill.setScrollFactor(0);
+      progressFill.setDepth(101);
+      progressFill.setVisible(false);
+
+      button.on('pointerdown', () => {
+        soundEffects.playButtonClick();
+        this.spawnPlayerUnit(key, config);
+      });
+
+      button.on('pointerover', () => {
+        if (this.canAfford(config.cost) && this.unitCooldowns[key] <= 0) {
+          button.setFillStyle(0x3C3C3C);
+        }
+      });
+
+      button.on('pointerout', () => {
+        button.setFillStyle(0x2C2C2C);
+      });
+
+      this._bottomBarObjects.push(button, icon, costText, hotkeyText, progressFill);
+
+      this.unitButtons.push({
+        key,
+        button,
+        icon,
+        costText,
+        progressFill,
+        maxCooldown: config.cooldown,
+      });
+    });
+
+    currentX += units.length * (buttonSize + spacing) + 12;
+
+    const divider2 = this.add.rectangle(currentX, centerY, 2, 50, 0x666666);
+    divider2.setScrollFactor(0);
+    divider2.setDepth(101);
+    currentX += 12;
+    this._bottomBarObjects.push(divider2);
+
+    if (this.vikingCampaign) {
+      this.createSpellButton(currentX, centerY, buttonSize, 'thorLightning', '⚡', CONFIG.THORS_LIGHTNING.cost, 0xFFD700, 'THOR');
+      this._bottomBarObjects.push(...this._collectLastSpellButtonObjs());
+      currentX += buttonSize + spacing;
+      this.createSpellButton(currentX, centerY, buttonSize, 'battleRage', '🪓', CONFIG.BATTLE_RAGE.cost, 0xFF4400, 'RAGE');
+      this._bottomBarObjects.push(...this._collectLastSpellButtonObjs());
+      currentX += buttonSize + spacing;
+      this.createSpellButton(currentX, centerY, buttonSize, 'frostShield', '❄️', CONFIG.FROST_SHIELD.cost, 0x44DDFF, 'FROST');
+      this._bottomBarObjects.push(...this._collectLastSpellButtonObjs());
+      currentX += buttonSize + spacing + 12;
+    } else if (this.alienCampaign) {
+      this.createSpellButton(currentX, centerY, buttonSize, 'mindControl', '🧠', CONFIG.MIND_CONTROL.cost, 0x00FF88, 'MIND');
+      this._bottomBarObjects.push(...this._collectLastSpellButtonObjs());
+      currentX += buttonSize + spacing;
+      this.createSpellButton(currentX, centerY, buttonSize, 'plasmaBomb', '💥', CONFIG.PLASMA_BOMB.cost, 0xFF6600, 'BOMB');
+      this._bottomBarObjects.push(...this._collectLastSpellButtonObjs());
+      currentX += buttonSize + spacing + 12;
+    } else {
+      this.createSpellButton(currentX, centerY, buttonSize, 'shieldWall', '🛡️', CONFIG.SHIELD_WALL.cost, 0xFFD700, 'SHLD');
+      this._bottomBarObjects.push(...this._collectLastSpellButtonObjs());
+      currentX += buttonSize + spacing;
+      this.createSpellButton(currentX, centerY, buttonSize, 'rainOfPila', '⚔️', CONFIG.RAIN_OF_PILA.cost, 0xFF6600, 'RAIN');
+      this._bottomBarObjects.push(...this._collectLastSpellButtonObjs());
+      currentX += buttonSize + spacing;
+      this.createSpellButton(currentX, centerY, buttonSize, 'healingSpring', '💧', CONFIG.HEALING_SPRING.cost, 0x00CED1, 'HEAL');
+      this._bottomBarObjects.push(...this._collectLastSpellButtonObjs());
+      currentX += buttonSize + spacing + 12;
+    }
+
+    const divider3 = this.add.rectangle(currentX, centerY, 2, 50, 0x666666);
+    divider3.setScrollFactor(0);
+    divider3.setDepth(101);
+    currentX += 12;
+    this._bottomBarObjects.push(divider3);
+
+    if (this.vikingCampaign) {
+      this.createUpgradeButton(currentX, centerY, buttonSize, 'viking', 'ironForging', '🔨', CONFIG.VIKING_UPGRADES.ironForging.cost);
+      currentX += buttonSize + spacing;
+      this.createUpgradeButton(currentX, centerY, buttonSize, 'viking', 'shieldWallTraining', '🛡️', CONFIG.VIKING_UPGRADES.shieldWallTraining.cost);
+      currentX += buttonSize + spacing;
+      this.createOdinsBlessingButton(currentX, centerY, buttonSize);
+      currentX += buttonSize + spacing;
+    } else if (this.alienCampaign) {
+      this.createUpgradeButton(currentX, centerY, buttonSize, 'alien', 'exoskeleton', '🦾', CONFIG.ALIEN_UPGRADES.exoskeleton.cost);
+      currentX += buttonSize + spacing;
+      this.createUpgradeButton(currentX, centerY, buttonSize, 'alien', 'plasmaInfusion', '⚡', CONFIG.ALIEN_UPGRADES.plasmaInfusion.cost);
+      currentX += buttonSize + spacing;
+    } else {
+      this.createUpgradeButton(currentX, centerY, buttonSize, 'roman', 'armor', '🛡️', CONFIG.ROMAN_UPGRADES.armor.cost);
+      currentX += buttonSize + spacing;
+      this.createUpgradeButton(currentX, centerY, buttonSize, 'roman', 'weapon', '⚔️', CONFIG.ROMAN_UPGRADES.weapon.cost);
+      currentX += buttonSize + spacing;
+      this.createAqueductButton(currentX, centerY, buttonSize);
+      currentX += buttonSize + spacing;
+    }
+
+    this._scheduleBottomBarAutoHide();
+  }
+
+  _collectLastSpellButtonObjs() {
+    const keys = Object.keys(this.spellButtons);
+    if (!keys.length) return [];
+    const last = this.spellButtons[keys[keys.length - 1]];
+    const objs = [];
+    if (last.button) objs.push(last.button);
+    if (last.cooldownOverlay) objs.push(last.cooldownOverlay);
+    if (last.cooldownText) objs.push(last.cooldownText);
+    return objs;
+  }
+
+  _toggleMobileBottomBar() {
+    if (!this._bottomBarObjects) return;
+    this._bottomBarVisible = !this._bottomBarVisible;
+    const { height } = this.scale;
+    const targetY = this._bottomBarVisible ? 0 : this._bottomBarHeight;
+
+    this._bottomBarObjects.forEach(obj => {
+      if (!obj || !obj.scene) return;
+      if (obj.type === 'Graphics') {
+        obj.setVisible(this._bottomBarVisible);
+      } else if (typeof obj.y === 'number') {
+        obj.y += this._bottomBarVisible ? -targetY : targetY;
+      }
+    });
+
+    this._bottomBarToggleText.setText(this._bottomBarVisible ? '▼ CMDS' : '▲ CMDS');
+    if (this._bottomBarVisible) this._scheduleBottomBarAutoHide();
+  }
+
+  _scheduleBottomBarAutoHide() {
+    if (this._bottomBarAutoHideTimer) {
+      this._bottomBarAutoHideTimer.remove();
+    }
+    this._bottomBarAutoHideTimer = this.time.delayedCall(5000, () => {
+      if (this._bottomBarVisible) {
+        this._toggleMobileBottomBar();
+      }
+    });
+  }
+
   createSpellButton(x, y, size, spellKey, icon, cost, borderColor, shortName) {
     const button = this.add.rectangle(x, y, size, size, 0x2C2C2C);
     button.setInteractive({ useHandCursor: true });
@@ -2866,6 +3188,7 @@ export class GameScene extends BaseGameScene {
   
   showTooltip(x, y, text) {
     if (!this.tooltipBg || !this.tooltipText) return;
+    if (this._mobileUI) return;
     
     this.tooltipText.setText(text);
     
@@ -6072,25 +6395,27 @@ export class GameScene extends BaseGameScene {
   
   updateCamera(delta) {
     if (this.isGameOver) return;
-    
+
     const speed = CONFIG.CAMERA_SCROLL_SPEED * (delta / 1000);
-    
-    // Keyboard scrolling
-    if (this.cursors.left.isDown || this.keyA.isDown) {
-      this.cameras.main.scrollX -= speed;
+
+    if (!this._mobileUI) {
+      // Keyboard scrolling (desktop)
+      if (this.cursors.left.isDown || this.keyA.isDown) {
+        this.cameras.main.scrollX -= speed;
+      }
+      if (this.cursors.right.isDown || this.keyD.isDown) {
+        this.cameras.main.scrollX += speed;
+      }
+
+      // Mouse edge scrolling (desktop)
+      if (this.cameraScrolling.left) {
+        this.cameras.main.scrollX -= speed;
+      }
+      if (this.cameraScrolling.right) {
+        this.cameras.main.scrollX += speed;
+      }
     }
-    if (this.cursors.right.isDown || this.keyD.isDown) {
-      this.cameras.main.scrollX += speed;
-    }
-    
-    // Mouse edge scrolling
-    if (this.cameraScrolling.left) {
-      this.cameras.main.scrollX -= speed;
-    }
-    if (this.cameraScrolling.right) {
-      this.cameras.main.scrollX += speed;
-    }
-    
+
     // Clamp camera to world bounds
     this.cameras.main.scrollX = Phaser.Math.Clamp(
       this.cameras.main.scrollX,
