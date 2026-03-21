@@ -29,9 +29,11 @@ function tryUnlock() {
   }
 }
 
-document.addEventListener('click', tryUnlock, { once: false, capture: true });
-document.addEventListener('touchstart', tryUnlock, { once: false, capture: true });
-document.addEventListener('keydown', tryUnlock, { once: false, capture: true });
+if (typeof document !== 'undefined') {
+  document.addEventListener('click', tryUnlock, { once: false, capture: true });
+  document.addEventListener('touchstart', tryUnlock, { once: false, capture: true });
+  document.addEventListener('keydown', tryUnlock, { once: false, capture: true });
+}
 
 function play(key) {
   if (!key || !TRACKS[key]) return;

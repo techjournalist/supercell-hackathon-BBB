@@ -1,1 +1,1 @@
-export const { createClient } = window.supabase;
+export const { createClient } = window.supabase ?? {};

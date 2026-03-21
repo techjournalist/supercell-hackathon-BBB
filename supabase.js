@@ -4,7 +4,7 @@ const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 const createClient = window.supabase?.createClient;
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient ? createClient(supabaseUrl, supabaseAnonKey) : null;
 
 function getSessionId() {
   const profile = ProfileManager.getActive();
