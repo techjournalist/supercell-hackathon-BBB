@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import { MusicManager } from "./MusicManager.js";
 import { ProfileManager } from "./ProfileManager.js";
+import { FullscreenManager } from "./FullscreenManager.js";
 
 export class SplashScene extends Phaser.Scene {
   constructor() {
@@ -25,7 +26,7 @@ export class SplashScene extends Phaser.Scene {
     this.videoContainer.style.top = "0";
     this.videoContainer.style.left = "0";
     this.videoContainer.style.width = "100vw";
-    this.videoContainer.style.height = "100vh";
+    this.videoContainer.style.height = `${window.innerHeight}px`;
     this.videoContainer.style.backgroundColor = "#000000";
     this.videoContainer.style.zIndex = "10000";
     this.videoContainer.style.overflow = "hidden";
@@ -65,6 +66,14 @@ export class SplashScene extends Phaser.Scene {
     this.skipTextElement.style.cursor = "pointer";
     this.skipTextElement.style.zIndex = "10001";
     this.videoContainer.appendChild(this.skipTextElement);
+
+    // Update container height on resize (handles fullscreen toggle, orientation change)
+    this._resizeHandler = () => {
+      if (this.videoContainer) {
+        this.videoContainer.style.height = `${window.innerHeight}px`;
+      }
+    };
+    window.addEventListener('resize', this._resizeHandler);
 
     // Fade in skip text after 2 seconds
     setTimeout(() => {
@@ -123,6 +132,7 @@ export class SplashScene extends Phaser.Scene {
 
     // Consolidated click/tap handler - handles both skip and unmute
     const skipHandler = () => {
+      FullscreenManager.tryFullscreen();
       MusicManager.tryUnlock();
       const snd = this.game && this.game.sound;
       if (snd && snd.context && snd.context.state === 'suspended') {
@@ -204,6 +214,10 @@ export class SplashScene extends Phaser.Scene {
       if (this.keyHandler) {
         document.removeEventListener("keydown", this.keyHandler);
       }
+      if (this._resizeHandler) {
+        window.removeEventListener('resize', this._resizeHandler);
+        this._resizeHandler = null;
+      }
 
       this.game.canvas.style.display = "block";
 
@@ -237,6 +251,10 @@ export class SplashScene extends Phaser.Scene {
     }
     if (this.keyHandler) {
       document.removeEventListener("keydown", this.keyHandler);
+    }
+    if (this._resizeHandler) {
+      window.removeEventListener('resize', this._resizeHandler);
+      this._resizeHandler = null;
     }
 
     // Make sure canvas is visible

@@ -29,6 +29,8 @@ export class ProfileSelectScene extends Phaser.Scene {
     this._drawTitle(width, height);
     this._drawSlots(width, height);
     this._drawFooter(width, height);
+
+    this.scale.on('resize', () => this.scene.restart());
   }
 
   _drawBackground(width, height) {
@@ -87,12 +89,19 @@ export class ProfileSelectScene extends Phaser.Scene {
     const profileMap = {};
     profiles.forEach(p => { profileMap[p.slot] = p; });
 
-    const totalW = (SLOT_W * 3) + (SLOT_GAP * 2);
+    // Dynamic slot sizing for mobile
+    const gap = Math.min(SLOT_GAP, width * 0.02);
+    const slotW = Math.min(SLOT_W, (width * 0.92 - gap * 2) / 3);
+    const slotH = Math.min(SLOT_H, height * 0.55);
+    this._slotW = slotW;
+    this._slotH = slotH;
+
+    const totalW = (slotW * 3) + (gap * 2);
     const startX = width / 2 - totalW / 2;
-    const slotY = height * 0.5 - SLOT_H / 2;
+    const slotY = height * 0.5 - slotH / 2;
 
     for (let i = 0; i < 3; i++) {
-      const x = startX + i * (SLOT_W + SLOT_GAP);
+      const x = startX + i * (slotW + gap);
       const profile = profileMap[i] || null;
       this._drawSlot(x, slotY, i, profile, width, height);
     }
@@ -100,17 +109,19 @@ export class ProfileSelectScene extends Phaser.Scene {
 
   _drawSlot(x, y, slot, profile, screenW, screenH) {
     const isEmpty = !profile;
+    const sw = this._slotW;
+    const sh = this._slotH;
 
     const card = this.add.graphics();
     const borderAlpha = isEmpty ? 0.3 : 0.8;
     const fillColor = isEmpty ? 0x080508 : 0x100a18;
 
     card.fillStyle(fillColor, 0.95);
-    card.fillRoundedRect(x, y, SLOT_W, SLOT_H, 12);
+    card.fillRoundedRect(x, y, sw, sh, 12);
     card.lineStyle(isEmpty ? 1 : 2, PANEL_BORDER, borderAlpha);
-    card.strokeRoundedRect(x, y, SLOT_W, SLOT_H, 12);
+    card.strokeRoundedRect(x, y, sw, sh, 12);
 
-    const hitZone = this.add.rectangle(x + SLOT_W / 2, y + SLOT_H / 2, SLOT_W, SLOT_H, 0x000000, 0);
+    const hitZone = this.add.rectangle(x + sw / 2, y + sh / 2, sw, sh, 0x000000, 0);
     hitZone.setInteractive({ useHandCursor: true });
 
     if (isEmpty) {
@@ -121,18 +132,21 @@ export class ProfileSelectScene extends Phaser.Scene {
   }
 
   _drawEmptySlot(x, y, slot, card, hitZone, screenW, screenH) {
-    const cx = x + SLOT_W / 2;
-    const cy = y + SLOT_H / 2;
+    const sw = this._slotW;
+    const sh = this._slotH;
+    const cx = x + sw / 2;
+    const cy = y + sh / 2;
+    const plusSize = Math.max(24, Math.min(48, sw * 0.2));
 
-    const plus = this.add.text(cx, cy - 20, '+', {
-      fontSize: '48px',
+    const plus = this.add.text(cx, cy - sh * 0.08, '+', {
+      fontSize: `${plusSize}px`,
       fontFamily: 'Arial, sans-serif',
       color: '#3a2a10',
     });
     plus.setOrigin(0.5);
 
-    const label = this.add.text(cx, cy + 30, 'NEW PROFILE', {
-      fontSize: '10px',
+    const label = this.add.text(cx, cy + sh * 0.12, 'NEW PROFILE', {
+      fontSize: `${Math.max(8, Math.min(10, sw * 0.045))}px`,
       fontFamily: 'Arial, sans-serif',
       color: '#4a3a1a',
       letterSpacing: 2,
@@ -142,9 +156,9 @@ export class ProfileSelectScene extends Phaser.Scene {
     hitZone.on('pointerover', () => {
       card.clear();
       card.fillStyle(0x1a1010, 0.95);
-      card.fillRoundedRect(x, y, SLOT_W, SLOT_H, 12);
+      card.fillRoundedRect(x, y, sw, sh, 12);
       card.lineStyle(2, GOLD, 0.5);
-      card.strokeRoundedRect(x, y, SLOT_W, SLOT_H, 12);
+      card.strokeRoundedRect(x, y, sw, sh, 12);
       plus.setColor('#c9941a');
       label.setColor('#c9941a');
       soundEffects.playButtonHover && soundEffects.playButtonHover();
@@ -153,9 +167,9 @@ export class ProfileSelectScene extends Phaser.Scene {
     hitZone.on('pointerout', () => {
       card.clear();
       card.fillStyle(0x080508, 0.95);
-      card.fillRoundedRect(x, y, SLOT_W, SLOT_H, 12);
+      card.fillRoundedRect(x, y, sw, sh, 12);
       card.lineStyle(1, PANEL_BORDER, 0.3);
-      card.strokeRoundedRect(x, y, SLOT_W, SLOT_H, 12);
+      card.strokeRoundedRect(x, y, sw, sh, 12);
       plus.setColor('#3a2a10');
       label.setColor('#4a3a1a');
     });
@@ -167,19 +181,24 @@ export class ProfileSelectScene extends Phaser.Scene {
   }
 
   _drawFilledSlot(x, y, slot, profile, card, hitZone, screenW, screenH) {
-    const cx = x + SLOT_W / 2;
+    const sw = this._slotW;
+    const sh = this._slotH;
+    const cx = x + sw / 2;
+    const iconFontSize = Math.max(24, Math.min(40, sw * 0.18));
+    const nameFontSize = Math.max(8, Math.min(11, sw * 0.05));
+    const statsFontSize = Math.max(7, Math.min(9, sw * 0.04));
 
     const iconChar = ProfileManager.getIconChar(profile.icon);
-    const iconText = this.add.text(cx, y + 52, iconChar, {
-      fontSize: '40px',
+    const iconText = this.add.text(cx, y + sh * 0.2, iconChar, {
+      fontSize: `${iconFontSize}px`,
     });
     iconText.setOrigin(0.5);
 
-    const nameText = this.add.text(cx, y + 108, profile.name.toUpperCase(), {
-      fontSize: '11px',
+    const nameText = this.add.text(cx, y + sh * 0.42, profile.name.toUpperCase(), {
+      fontSize: `${nameFontSize}px`,
       fontFamily: 'Press Start 2P, Arial',
       color: '#e8d5a3',
-      wordWrap: { width: SLOT_W - 20 },
+      wordWrap: { width: sw - 20 },
       align: 'center',
     });
     nameText.setOrigin(0.5);
@@ -188,8 +207,8 @@ export class ProfileSelectScene extends Phaser.Scene {
     const games = profile.totalGames || 0;
     const winRate = games > 0 ? Math.round((wins / games) * 100) : 0;
 
-    const statsText = this.add.text(cx, y + 148, `${games} games  ${winRate}% wins`, {
-      fontSize: '9px',
+    const statsText = this.add.text(cx, y + sh * 0.57, `${games} games  ${winRate}% wins`, {
+      fontSize: `${statsFontSize}px`,
       fontFamily: 'Arial, sans-serif',
       color: '#8a7a5a',
       letterSpacing: 1,
@@ -197,33 +216,37 @@ export class ProfileSelectScene extends Phaser.Scene {
     statsText.setOrigin(0.5);
 
     const lastPlayed = this._formatDate(profile.lastPlayed);
-    const lastText = this.add.text(cx, y + 168, `Last: ${lastPlayed}`, {
-      fontSize: '9px',
+    const lastText = this.add.text(cx, y + sh * 0.65, `Last: ${lastPlayed}`, {
+      fontSize: `${statsFontSize}px`,
       fontFamily: 'Arial, sans-serif',
       color: '#5a4a2a',
     });
     lastText.setOrigin(0.5);
 
-    const playBtn = this._makeSmallButton(cx - 44, y + SLOT_H - 44, 80, 28, 'PLAY', GOLD_STR, 0x1a0f03, GOLD);
-    const deleteBtn = this._makeSmallButton(cx + 44, y + SLOT_H - 44, 60, 28, 'DEL', '#884422', 0x1a0505, 0x884422);
+    const btnW = Math.min(80, sw * 0.36);
+    const delBtnW = Math.min(60, sw * 0.27);
+    const btnH = Math.min(28, sh * 0.1);
+    const btnSpacing = Math.min(44, sw * 0.2);
+    const playBtn = this._makeSmallButton(cx - btnSpacing, y + sh - sh * 0.17, btnW, btnH, 'PLAY', GOLD_STR, 0x1a0f03, GOLD);
+    const deleteBtn = this._makeSmallButton(cx + btnSpacing, y + sh - sh * 0.17, delBtnW, btnH, 'DEL', '#884422', 0x1a0505, 0x884422);
 
     hitZone.on('pointerover', () => {
       card.clear();
       card.fillStyle(0x18100a, 0.95);
-      card.fillRoundedRect(x, y, SLOT_W, SLOT_H, 12);
+      card.fillRoundedRect(x, y, sw, sh, 12);
       card.lineStyle(2, 0xf0c040, 1);
-      card.strokeRoundedRect(x, y, SLOT_W, SLOT_H, 12);
+      card.strokeRoundedRect(x, y, sw, sh, 12);
       card.lineStyle(8, GOLD, 0.2);
-      card.strokeRoundedRect(x, y, SLOT_W, SLOT_H, 12);
+      card.strokeRoundedRect(x, y, sw, sh, 12);
       soundEffects.playButtonHover && soundEffects.playButtonHover();
     });
 
     hitZone.on('pointerout', () => {
       card.clear();
       card.fillStyle(0x100a18, 0.95);
-      card.fillRoundedRect(x, y, SLOT_W, SLOT_H, 12);
+      card.fillRoundedRect(x, y, sw, sh, 12);
       card.lineStyle(2, PANEL_BORDER, 0.8);
-      card.strokeRoundedRect(x, y, SLOT_W, SLOT_H, 12);
+      card.strokeRoundedRect(x, y, sw, sh, 12);
     });
 
     playBtn.hitZone.on('pointerdown', () => {

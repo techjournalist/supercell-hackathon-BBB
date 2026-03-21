@@ -20,6 +20,7 @@ import { MusicManager } from './MusicManager.js';
 import { saveGameSession, submitLeaderboardEntry, updatePlayerStats, saveCampaignProgress } from './supabase.js';
 import { BaseGameScene } from './BaseGameScene.js';
 import { isMobile } from './MobileUtils.js';
+import { FullscreenManager } from './FullscreenManager.js';
 
 export class GameScene extends BaseGameScene {
   constructor() {
@@ -51,6 +52,7 @@ export class GameScene extends BaseGameScene {
     }
 
     this.input.once('pointerdown', () => {
+      FullscreenManager.tryFullscreen();
       MusicManager.tryUnlock();
       if (AudioManager.shouldPlayMusic()) {
         MusicManager.play('battle-music');

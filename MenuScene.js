@@ -3,6 +3,7 @@ import { AudioManager } from './AudioManager.js';
 import { soundEffects } from './SoundEffectsManager.js';
 import { MusicManager } from './MusicManager.js';
 import { ProfileManager } from './ProfileManager.js';
+import { FullscreenManager } from './FullscreenManager.js';
 
 export class MenuScene extends Phaser.Scene {
   constructor() {
@@ -245,14 +246,35 @@ export class MenuScene extends Phaser.Scene {
       });
     });
     
+    // Fullscreen button (only on mobile when not fullscreen)
+    if (FullscreenManager.isMobile()) {
+      const fsFontSize = Math.max(18, Math.min(width * 0.022, 26));
+      const fsBtn = this.add.text(width - 20, 20, '⛶', {
+        fontSize: `${fsFontSize}px`,
+        color: '#c9941a',
+      });
+      fsBtn.setOrigin(1, 0);
+      fsBtn.setInteractive({ useHandCursor: true });
+      fsBtn.on('pointerdown', () => {
+        if (FullscreenManager.isFullscreen()) {
+          FullscreenManager.exitFullscreen();
+        } else {
+          FullscreenManager.requestFullscreen();
+        }
+      });
+      fsBtn.on('pointerover', () => fsBtn.setColor('#f0c040'));
+      fsBtn.on('pointerout', () => fsBtn.setColor('#c9941a'));
+    }
+
     // Settings icon (gear) in top-right corner
     const settingsFontSize = Math.max(20, Math.min(width * 0.025, 28));
-    const settingsIcon = this.add.text(width - 20, 20, '⚙️', {
+    const settingsXOffset = FullscreenManager.isMobile() ? 56 : 20;
+    const settingsIcon = this.add.text(width - settingsXOffset, 20, '⚙️', {
       fontSize: `${settingsFontSize}px`,
     });
     settingsIcon.setOrigin(1, 0);
     settingsIcon.setInteractive({ useHandCursor: true });
-    
+
     settingsIcon.on('pointerdown', () => {
       soundEffects.playButtonClick();
       this.showSettings();
@@ -266,8 +288,11 @@ export class MenuScene extends Phaser.Scene {
     settingsIcon.on('pointerout', () => {
       settingsIcon.setScale(1);
     });
+
+    // Resize handler
+    this.scale.on('resize', () => this.scene.restart());
   }
-  
+
   showSettings() {
     this.scene.launch('AudioSettingsScene', { callingScene: 'MenuScene' });
   }

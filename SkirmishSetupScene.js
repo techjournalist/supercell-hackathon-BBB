@@ -12,92 +12,109 @@ export class SkirmishSetupScene extends Phaser.Scene {
   
   create() {
     const { width, height } = this.scale;
-    
+
     // Fade in
     this.cameras.main.fadeIn(500, 0, 0, 0);
-    
+
     // Background image
     const bg = this.add.image(width / 2, height / 2, 'generic-bg');
     bg.setDisplaySize(width, height);
-    
+
     // Add semi-transparent overlay for better text readability
     const overlay = this.add.rectangle(0, 0, width, height, 0x000000, 0.4);
     overlay.setOrigin(0);
-    
+
+    // Responsive sizing
+    const titleSize = Math.max(20, Math.min(48, width * 0.045));
+    const sectionSize = Math.max(12, Math.min(24, width * 0.025));
+    const factionBtnW = Math.min(250, (width - 80) / 3 - 20);
+    const factionBtnH = Math.min(120, height * 0.18);
+    const factionSpacing = factionBtnW + Math.min(30, width * 0.025);
+    const diffBtnW = Math.min(220, (width - 80) / 3 - 20);
+    const diffBtnH = Math.min(100, height * 0.15);
+    const diffSpacing = diffBtnW + Math.min(30, width * 0.025);
+    const iconSize = Math.max(24, Math.min(48, width * 0.04));
+    const labelSize = Math.max(10, Math.min(18, width * 0.018));
+    const skullSize = Math.max(14, Math.min(24, width * 0.022));
+    const diffLabelSize = Math.max(9, Math.min(16, width * 0.016));
+
     // Title
-    const title = this.add.text(width / 2, 80, 'SKIRMISH SETUP', {
-      fontSize: '48px',
+    const titleY = Math.min(80, height * 0.12);
+    const title = this.add.text(width / 2, titleY, 'SKIRMISH SETUP', {
+      fontSize: `${titleSize}px`,
       fontFamily: 'Press Start 2P',
       color: '#FFD700',
       stroke: '#8B4513',
-      strokeThickness: 6,
+      strokeThickness: Math.max(3, titleSize * 0.12),
     });
     title.setOrigin(0.5);
-    
+
     // Selected options
     this.selectedFaction = 'roman';
     this.selectedDifficulty = 'medium';
-    
+
     // FACTION SELECTION SECTION
-    const factionY = 200;
+    const factionY = titleY + titleSize + Math.min(40, height * 0.06);
     const factionLabel = this.add.text(width / 2, factionY, 'SELECT FACTION', {
-      fontSize: '24px',
+      fontSize: `${sectionSize}px`,
       fontFamily: 'Press Start 2P',
       color: '#FFFFFF',
     });
     factionLabel.setOrigin(0.5);
-    
-    // Roman faction button
-    this.createFactionButton(width / 2 - 280, factionY + 80, 'ROMANS', 'roman', '🛡️');
-    
-    // Viking faction button
-    this.createFactionButton(width / 2, factionY + 80, 'VIKINGS', 'viking', '⚔️');
-    
-    // Alien faction button
-    this.createFactionButton(width / 2 + 280, factionY + 80, 'ALIENS', 'alien', '👽');
-    
+
+    const factionBtnY = factionY + sectionSize + Math.min(40, height * 0.06);
+    this.createFactionButton(width / 2 - factionSpacing, factionBtnY, 'ROMANS', 'roman', '🛡️', factionBtnW, factionBtnH, iconSize, labelSize);
+    this.createFactionButton(width / 2, factionBtnY, 'VIKINGS', 'viking', '⚔️', factionBtnW, factionBtnH, iconSize, labelSize);
+    this.createFactionButton(width / 2 + factionSpacing, factionBtnY, 'ALIENS', 'alien', '👽', factionBtnW, factionBtnH, iconSize, labelSize);
+
     // DIFFICULTY SELECTION SECTION
-    const difficultyY = 420;
+    const difficultyY = factionBtnY + factionBtnH / 2 + Math.min(50, height * 0.07);
     const difficultyLabel = this.add.text(width / 2, difficultyY, 'AI DIFFICULTY', {
-      fontSize: '24px',
+      fontSize: `${sectionSize}px`,
       fontFamily: 'Press Start 2P',
       color: '#FFFFFF',
     });
     difficultyLabel.setOrigin(0.5);
-    
-    // Difficulty buttons
-    this.createDifficultyButton(width / 2 - 300, difficultyY + 80, 'EASY', 'easy', 1);
-    this.createDifficultyButton(width / 2, difficultyY + 80, 'MEDIUM', 'medium', 2);
-    this.createDifficultyButton(width / 2 + 300, difficultyY + 80, 'HARD', 'hard', 3);
-    
+
+    const diffBtnY = difficultyY + sectionSize + Math.min(40, height * 0.06);
+    this.createDifficultyButton(width / 2 - diffSpacing, diffBtnY, 'EASY', 'easy', 1, diffBtnW, diffBtnH, skullSize, diffLabelSize);
+    this.createDifficultyButton(width / 2, diffBtnY, 'MEDIUM', 'medium', 2, diffBtnW, diffBtnH, skullSize, diffLabelSize);
+    this.createDifficultyButton(width / 2 + diffSpacing, diffBtnY, 'HARD', 'hard', 3, diffBtnW, diffBtnH, skullSize, diffLabelSize);
+
     // START BATTLE BUTTON
-    this.createButton(width / 2, height - 120, 300, 70, 'START BATTLE', () => {
+    const startBtnW = Math.min(300, width * 0.4);
+    const startBtnH = Math.min(70, height * 0.1);
+    const btnFontSize = Math.max(12, Math.min(20, width * 0.02));
+    this.createButton(width / 2, height - Math.min(120, height * 0.18), startBtnW, startBtnH, 'START BATTLE', () => {
       this.startBattle();
-    });
-    
+    }, btnFontSize);
+
     // Back button
-    this.createButton(width / 2, height - 40, 200, 50, 'BACK', () => {
+    const backBtnW = Math.min(200, width * 0.28);
+    const backBtnH = Math.min(50, height * 0.07);
+    this.createButton(width / 2, height - Math.min(40, height * 0.06), backBtnW, backBtnH, 'BACK', () => {
       this.cameras.main.fadeOut(300, 0, 0, 0);
       this.cameras.main.once('camerafadeoutcomplete', () => {
         this.scene.start('MenuScene');
       });
-    });
+    }, Math.max(10, btnFontSize - 2));
+
+    // Resize handler
+    this.scale.on('resize', () => this.scene.restart());
   }
   
-  createFactionButton(x, y, label, faction, icon) {
-    const button = this.add.rectangle(x, y, 250, 120, 0x8B4513);
-    button.setStrokeStyle(4, 0xFFD700);
+  createFactionButton(x, y, label, faction, icon, btnW = 250, btnH = 120, iconSz = 48, labelSz = 18) {
+    const button = this.add.rectangle(x, y, btnW, btnH, 0x8B4513);
+    button.setStrokeStyle(Math.max(2, btnW * 0.016), 0xFFD700);
     button.setInteractive({ useHandCursor: true });
-    
-    // Icon
-    const iconText = this.add.text(x, y - 30, icon, {
-      fontSize: '48px',
+
+    const iconText = this.add.text(x, y - btnH * 0.2, icon, {
+      fontSize: `${iconSz}px`,
     });
     iconText.setOrigin(0.5);
-    
-    // Label
-    const labelText = this.add.text(x, y + 30, label, {
-      fontSize: '18px',
+
+    const labelText = this.add.text(x, y + btnH * 0.25, label, {
+      fontSize: `${labelSz}px`,
       fontFamily: 'Press Start 2P',
       color: '#FFFFFF',
     });
@@ -130,21 +147,19 @@ export class SkirmishSetupScene extends Phaser.Scene {
     });
   }
   
-  createDifficultyButton(x, y, label, difficulty, skullCount) {
-    const button = this.add.rectangle(x, y, 220, 100, 0x8B4513);
-    button.setStrokeStyle(4, 0xFFD700);
+  createDifficultyButton(x, y, label, difficulty, skullCount, btnW = 220, btnH = 100, skullSz = 24, labelSz = 16) {
+    const button = this.add.rectangle(x, y, btnW, btnH, 0x8B4513);
+    button.setStrokeStyle(Math.max(2, btnW * 0.018), 0xFFD700);
     button.setInteractive({ useHandCursor: true });
-    
-    // Skull icons
+
     const skullText = '☠️'.repeat(skullCount);
-    const skulls = this.add.text(x, y - 25, skullText, {
-      fontSize: '24px',
+    const skulls = this.add.text(x, y - btnH * 0.22, skullText, {
+      fontSize: `${skullSz}px`,
     });
     skulls.setOrigin(0.5);
-    
-    // Label
-    const labelText = this.add.text(x, y + 20, label, {
-      fontSize: '16px',
+
+    const labelText = this.add.text(x, y + btnH * 0.2, label, {
+      fontSize: `${labelSz}px`,
       fontFamily: 'Press Start 2P',
       color: '#FFFFFF',
     });
@@ -209,13 +224,13 @@ export class SkirmishSetupScene extends Phaser.Scene {
     this.selectedDifficulty = difficulty;
   }
   
-  createButton(x, y, width, height, text, callback) {
+  createButton(x, y, width, height, text, callback, fontSize = 20) {
     const button = this.add.rectangle(x, y, width, height, 0x8B4513);
     button.setInteractive({ useHandCursor: true });
-    button.setStrokeStyle(4, 0xFFD700);
-    
+    button.setStrokeStyle(Math.max(2, width * 0.013), 0xFFD700);
+
     const buttonText = this.add.text(x, y, text, {
-      fontSize: '20px',
+      fontSize: `${fontSize}px`,
       fontFamily: 'Press Start 2P',
       color: '#FFFFFF',
     });

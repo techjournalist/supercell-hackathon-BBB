@@ -11,6 +11,7 @@ export class DefeatScene extends Phaser.Scene {
   }
   
   create(data) {
+    this._sceneData = data;
     const { width, height } = this.scale;
 
     // Fade in
@@ -37,7 +38,8 @@ export class DefeatScene extends Phaser.Scene {
     this.createDefeatParticles(width, height);
     
     // Defeat banner with ominous glow (semi-transparent to show background)
-    const banner = this.add.rectangle(width / 2, 150, width * 0.9, 150, 0xF44336, 0.7);
+    const bannerY = Math.min(150, height * 0.25);
+    const banner = this.add.rectangle(width / 2, bannerY, width * 0.9, 150, 0xF44336, 0.7);
     banner.setStrokeStyle(5, 0x8B0000);
     
     this.tweens.add({
@@ -49,8 +51,8 @@ export class DefeatScene extends Phaser.Scene {
       ease: 'Sine.easeInOut'
     });
     
-    const defeatText = this.add.text(width / 2, 150, 'DEFEAT', {
-      fontSize: '72px',
+    const defeatText = this.add.text(width / 2, bannerY, 'DEFEAT', {
+      fontSize: `${Math.max(28, Math.min(72, width * 0.08))}px`,
       fontFamily: 'Press Start 2P',
       color: '#8B0000',
       stroke: '#000000',
@@ -69,9 +71,10 @@ export class DefeatScene extends Phaser.Scene {
     });
     
     // Add warning icons
-    const leftIcon = this.add.text(width / 2 - 300, 150, '☠️', { fontSize: '80px' });
+    const iconOffset = Math.min(300, width * 0.35);
+    const leftIcon = this.add.text(width / 2 - iconOffset, bannerY, '☠️', { fontSize: `${Math.max(40, Math.min(80, width * 0.08))}px` });
     leftIcon.setOrigin(0.5);
-    const rightIcon = this.add.text(width / 2 + 300, 150, '☠️', { fontSize: '80px' });
+    const rightIcon = this.add.text(width / 2 + iconOffset, bannerY, '☠️', { fontSize: `${Math.max(40, Math.min(80, width * 0.08))}px` });
     rightIcon.setOrigin(0.5);
     
     this.tweens.add({
@@ -84,7 +87,7 @@ export class DefeatScene extends Phaser.Scene {
     });
     
     // Stats panel
-    const statsY = 300;
+    const statsY = Math.min(300, height * 0.42);
     const stats = data.stats || {
       unitsTrained: 0,
       goldEarned: 0,
@@ -92,12 +95,12 @@ export class DefeatScene extends Phaser.Scene {
       spellsCast: 0
     };
     
-    const statsPanel = this.add.rectangle(width / 2, statsY + 120, 500, 300, 0x2C2416, 0.85);
+    const statsPanel = this.add.rectangle(width / 2, statsY + 120, Math.min(500, width * 0.85), Math.min(300, height * 0.4), 0x2C2416, 0.85);
     statsPanel.setStrokeStyle(4, 0x8B0000);
     
     const statsTitle = this.add.text(width / 2, statsY, 
       challengeMode === 'endless' ? 'FINAL STATS' : 'BATTLE STATISTICS', {
-      fontSize: '24px',
+      fontSize: `${Math.max(12, Math.min(24, width * 0.025))}px`,
       fontFamily: 'Press Start 2P',
       color: '#F44336',
     });
@@ -113,37 +116,41 @@ export class DefeatScene extends Phaser.Scene {
     let statY = statsY + 60;
     statsText.forEach(stat => {
       const text = this.add.text(width / 2, statY, stat, {
-        fontSize: '18px',
+        fontSize: `${Math.max(10, Math.min(18, width * 0.02))}px`,
         fontFamily: 'Press Start 2P',
         color: '#FFFFFF',
       });
       text.setOrigin(0.5);
-      statY += 50;
+      statY += Math.min(50, height * 0.07);
     });
     
     // Buttons
-    const buttonY = height - 150;
+    const buttonY = height - Math.min(150, height * 0.22);
     
     const skirmishDifficulty = this.registry.get('skirmishDifficulty');
-    
+    const btnOffset = Math.min(150, width * 0.18);
+    const btnWidth = Math.min(250, width * 0.3);
+
     // Retry button
     if (skirmishDifficulty) {
-      this.createButton(width / 2 - 150, buttonY, 250, 60, 'RETRY', () => {
+      this.createButton(width / 2 - btnOffset, buttonY, btnWidth, 60, 'RETRY', () => {
         this.startTransition('GameScene');
       });
     } else {
-      this.createButton(width / 2 - 150, buttonY, 250, 60, 'RETRY', () => {
+      this.createButton(width / 2 - btnOffset, buttonY, btnWidth, 60, 'RETRY', () => {
         this.startTransition('GameScene');
       });
     }
-    
+
     // Main Menu button
-    this.createButton(width / 2 + 150, buttonY, 250, 60, 'MAIN MENU', () => {
+    this.createButton(width / 2 + btnOffset, buttonY, btnWidth, 60, 'MAIN MENU', () => {
       if (skirmishDifficulty) {
         this.registry.set('skirmishDifficulty', null);
       }
       this.startTransition('MenuScene');
     });
+
+    this.scale.on('resize', () => this.scene.restart(this._sceneData));
   }
   
   createButton(x, y, width, height, text, callback) {
@@ -152,7 +159,7 @@ export class DefeatScene extends Phaser.Scene {
     button.setStrokeStyle(4, 0xFFD700);
     
     const buttonText = this.add.text(x, y, text, {
-      fontSize: '20px',
+      fontSize: `${Math.max(10, Math.min(20, width * 0.08))}px`,
       fontFamily: 'Press Start 2P',
       color: '#FFFFFF',
     });

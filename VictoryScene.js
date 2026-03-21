@@ -12,6 +12,7 @@ export class VictoryScene extends Phaser.Scene {
   
   create(data) {
     const { width, height } = this.scale;
+    this._sceneData = data;
 
     // Fade in
     this.cameras.main.fadeIn(500, 0, 0, 0);
@@ -41,7 +42,8 @@ export class VictoryScene extends Phaser.Scene {
     this.createVictoryParticles(width, height);
     
     // Victory banner (semi-transparent to show background)
-    const banner = this.add.rectangle(width / 2, 150, width * 0.9, 150, 0x4CAF50, 0.7);
+    const bannerY = Math.min(150, height * 0.25);
+    const banner = this.add.rectangle(width / 2, bannerY, width * 0.9, 150, 0x4CAF50, 0.7);
     banner.setStrokeStyle(5, 0xFFD700);
     
     // Add banner glow
@@ -54,8 +56,8 @@ export class VictoryScene extends Phaser.Scene {
       ease: 'Sine.easeInOut'
     });
     
-    const victoryText = this.add.text(width / 2, 150, 'VICTORY!', {
-      fontSize: '72px',
+    const victoryText = this.add.text(width / 2, bannerY, 'VICTORY!', {
+      fontSize: `${Math.max(28, Math.min(72, width * 0.08))}px`,
       fontFamily: 'Press Start 2P',
       color: '#FFD700',
       stroke: '#000000',
@@ -74,9 +76,11 @@ export class VictoryScene extends Phaser.Scene {
     });
     
     // Add celebratory icons
-    const leftIcon = this.add.text(width / 2 - 300, 150, '🏆', { fontSize: '80px' });
+    const trophyOffset = Math.min(300, width * 0.35);
+    const trophyFontSize = Math.max(40, Math.min(80, width * 0.08));
+    const leftIcon = this.add.text(width / 2 - trophyOffset, bannerY, '🏆', { fontSize: `${trophyFontSize}px` });
     leftIcon.setOrigin(0.5);
-    const rightIcon = this.add.text(width / 2 + 300, 150, '🏆', { fontSize: '80px' });
+    const rightIcon = this.add.text(width / 2 + trophyOffset, bannerY, '🏆', { fontSize: `${trophyFontSize}px` });
     rightIcon.setOrigin(0.5);
     
     this.tweens.add({
@@ -88,7 +92,7 @@ export class VictoryScene extends Phaser.Scene {
     });
     
     // Stats panel
-    const statsY = 300;
+    const statsY = Math.min(300, height * 0.42);
     const stats = data.stats || {
       unitsTrained: 0,
       goldEarned: 0,
@@ -96,11 +100,11 @@ export class VictoryScene extends Phaser.Scene {
       spellsCast: 0
     };
     
-    const statsPanel = this.add.rectangle(width / 2, statsY + 120, 500, 300, 0x2C2416, 0.85);
+    const statsPanel = this.add.rectangle(width / 2, statsY + 120, Math.min(500, width * 0.85), Math.min(300, height * 0.4), 0x2C2416, 0.85);
     statsPanel.setStrokeStyle(4, 0xFFD700);
     
     const statsTitle = this.add.text(width / 2, statsY, challengeMode ? 'CHALLENGE COMPLETE!' : 'BATTLE STATISTICS', {
-      fontSize: '24px',
+      fontSize: `${Math.max(12, Math.min(24, width * 0.025))}px`,
       fontFamily: 'Press Start 2P',
       color: '#FFD700',
     });
@@ -161,16 +165,16 @@ export class VictoryScene extends Phaser.Scene {
     let statY = statsY + 60;
     statsText.forEach(stat => {
       const text = this.add.text(width / 2, statY, stat, {
-        fontSize: '18px',
+        fontSize: `${Math.max(10, Math.min(18, width * 0.02))}px`,
         fontFamily: 'Press Start 2P',
         color: '#FFFFFF',
       });
       text.setOrigin(0.5);
-      statY += 50;
+      statY += Math.min(50, height * 0.07);
     });
     
     // Buttons
-    const buttonY = height - 150;
+    const buttonY = height - Math.min(150, height * 0.22);
     
     // Check if in campaign mode
     const campaignLevel = this.registry.get('campaignLevel');
@@ -178,14 +182,18 @@ export class VictoryScene extends Phaser.Scene {
     const alienCampaign = this.registry.get('alienCampaign');
     const skirmishDifficulty = this.registry.get('skirmishDifficulty');
     
+    const buttonOffset = Math.min(150, width * 0.18);
+    const normalButtonWidth = Math.min(250, width * 0.3);
+    const wideButtonWidth = Math.min(300, width * 0.35);
+
     if (challengeMode) {
       // Challenge mode - show Try Again and Challenge Menu
-      this.createButton(width / 2 - 150, buttonY, 250, 60, 'TRY AGAIN', () => {
+      this.createButton(width / 2 - buttonOffset, buttonY, normalButtonWidth, 60, 'TRY AGAIN', () => {
         this.registry.set('challengeMode', challengeMode);
         this.startTransition('GameScene');
       });
-      
-      this.createButton(width / 2 + 150, buttonY, 300, 60, 'CHALLENGE MENU', () => {
+
+      this.createButton(width / 2 + buttonOffset, buttonY, wideButtonWidth, 60, 'CHALLENGE MENU', () => {
         this.registry.set('challengeMode', null);
         this.startTransition('ChallengeMenuScene');
       });
@@ -195,12 +203,12 @@ export class VictoryScene extends Phaser.Scene {
       if (vikingCampaign) campaignScene = 'VikingCampaignScene';
       if (alienCampaign) campaignScene = 'AlienCampaignScene';
       
-      this.createButton(width / 2 - 150, buttonY, 300, 60, 'CONTINUE CAMPAIGN', () => {
+      this.createButton(width / 2 - buttonOffset, buttonY, wideButtonWidth, 60, 'CONTINUE CAMPAIGN', () => {
         this.startTransition(campaignScene);
       });
-      
+
       // Main Menu button
-      this.createButton(width / 2 + 180, buttonY, 250, 60, 'MAIN MENU', () => {
+      this.createButton(width / 2 + buttonOffset, buttonY, normalButtonWidth, 60, 'MAIN MENU', () => {
         this.registry.set('campaignLevel', null); // Clear campaign mode
         this.registry.set('vikingCampaign', false);
         this.registry.set('alienCampaign', false);
@@ -208,26 +216,29 @@ export class VictoryScene extends Phaser.Scene {
       });
     } else if (skirmishDifficulty) {
       // Skirmish mode - show Rematch and Main Menu
-      this.createButton(width / 2 - 150, buttonY, 250, 60, 'REMATCH', () => {
+      this.createButton(width / 2 - buttonOffset, buttonY, normalButtonWidth, 60, 'REMATCH', () => {
         this.startTransition('SkirmishSetupScene');
       });
-      
+
       // Main Menu button
-      this.createButton(width / 2 + 150, buttonY, 250, 60, 'MAIN MENU', () => {
+      this.createButton(width / 2 + buttonOffset, buttonY, normalButtonWidth, 60, 'MAIN MENU', () => {
         this.registry.set('skirmishDifficulty', null); // Clear skirmish mode
         this.startTransition('MenuScene');
       });
     } else {
       // Legacy mode - show Next Level button
-      this.createButton(width / 2 - 150, buttonY, 250, 60, 'NEXT LEVEL', () => {
+      this.createButton(width / 2 - buttonOffset, buttonY, normalButtonWidth, 60, 'NEXT LEVEL', () => {
         this.startTransition('FactionSelectScene');
       });
-      
+
       // Main Menu button
-      this.createButton(width / 2 + 150, buttonY, 250, 60, 'MAIN MENU', () => {
+      this.createButton(width / 2 + buttonOffset, buttonY, normalButtonWidth, 60, 'MAIN MENU', () => {
         this.startTransition('MenuScene');
       });
     }
+
+    // Resize handler
+    this.scale.on('resize', () => this.scene.restart(this._sceneData));
   }
   
   createButton(x, y, width, height, text, callback) {
@@ -236,7 +247,7 @@ export class VictoryScene extends Phaser.Scene {
     button.setStrokeStyle(4, 0xFFD700);
     
     const buttonText = this.add.text(x, y, text, {
-      fontSize: '20px',
+      fontSize: `${Math.max(10, Math.min(20, width * 0.08))}px`,
       fontFamily: 'Press Start 2P',
       color: '#FFFFFF',
     });
@@ -327,12 +338,13 @@ export class VictoryScene extends Phaser.Scene {
   }
   
   displayStarRating(centerX, centerY, stars, bestStars = 0) {
-    const starSpacing = 80;
+    const { width } = this.scale;
+    const starSpacing = Math.min(80, width * 0.08);
     const startX = centerX - ((stars - 1) * starSpacing / 2);
     
     // Create rating label
     const ratingLabel = this.add.text(centerX, centerY - 60, 'PERFORMANCE RATING', {
-      fontSize: '18px',
+      fontSize: `${Math.max(10, Math.min(18, width * 0.02))}px`,
       fontFamily: 'Press Start 2P',
       color: '#FFD700',
       stroke: '#000000',
@@ -386,7 +398,7 @@ export class VictoryScene extends Phaser.Scene {
       
       // Background star (dark/unearned)
       const bgStar = this.add.text(starX, centerY, '★', {
-        fontSize: '72px',
+        fontSize: `${Math.max(32, Math.min(72, width * 0.07))}px`,
         color: isEarned ? '#FFD700' : '#444444',
         stroke: '#000000',
         strokeThickness: 4
@@ -441,7 +453,7 @@ export class VictoryScene extends Phaser.Scene {
     // Add time thresholds guide below stars
     const thresholdText = this.add.text(centerX, centerY + 70, 
       '★★★ < 1:30  |  ★★ < 2:00  |  ★ < 3:00', {
-      fontSize: '14px',
+      fontSize: `${Math.max(8, Math.min(14, width * 0.015))}px`,
       fontFamily: 'Press Start 2P',
       color: '#888888',
       stroke: '#000000',

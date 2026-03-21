@@ -16,6 +16,7 @@ export class VikingCampaignScene extends Phaser.Scene {
   create() {
     this.starMap = JSON.parse(localStorage.getItem('levelStars') || '{}');
     this.buildUI();
+    this.scale.on('resize', () => this.buildUI());
 
     getAllLevelStars().then(map => {
       this.starMap = map;
@@ -62,8 +63,9 @@ export class VikingCampaignScene extends Phaser.Scene {
     const overlay = this.add.rectangle(0, 0, width, height, 0x000000, 0.4);
     overlay.setOrigin(0);
 
+    const titleFontSize = Math.max(18, Math.min(38, width * 0.04));
     const title = this.add.text(width / 2, 50, 'VIKING CAMPAIGN', {
-      fontSize: '40px',
+      fontSize: `${titleFontSize}px`,
       fontFamily: 'Press Start 2P',
       color: '#87CEEB',
       stroke: '#2C3E50',
@@ -107,8 +109,14 @@ export class VikingCampaignScene extends Phaser.Scene {
       this.createLevelRow(width, y, level, isUnlocked, isCompleted);
     });
 
-    this.createBackButton(width / 2 - 230, height - 50);
-    this.createProfileButton(width / 2 + 210, height - 50);
+    const btnW = Math.min(190, (width - 40) / 2 - 10);
+    const btnH = Math.min(44, height * 0.07);
+    const gap = Math.min(20, width * 0.02);
+    const totalBtnArea = btnW * 2 + gap;
+    const startX = width / 2 - totalBtnArea / 2 + btnW / 2;
+    const btnY = height - Math.min(50, height * 0.08);
+    this.createBackButton(startX, btnY, btnW, btnH);
+    this.createProfileButton(startX + btnW + gap, btnY, btnW, btnH);
   }
 
   createGlobalDifficultyBar(cx, cy, currentDiff) {
@@ -242,13 +250,14 @@ export class VikingCampaignScene extends Phaser.Scene {
     MusicManager.stop();
   }
 
-  createBackButton(x, y) {
-    const backButton = this.add.rectangle(x, y, 190, 44, 0x8B4513);
+  createBackButton(x, y, w = 190, h = 44) {
+    const fontSize = Math.max(10, Math.min(18, w * 0.09));
+    const backButton = this.add.rectangle(x, y, w, h, 0x8B4513);
     backButton.setInteractive({ useHandCursor: true });
     backButton.setStrokeStyle(3, 0xFFD700);
 
     const backText = this.add.text(x, y, 'BACK', {
-      fontSize: '18px',
+      fontSize: `${fontSize}px`,
       fontFamily: 'Press Start 2P',
       color: '#FFFFFF',
     });
@@ -262,13 +271,14 @@ export class VikingCampaignScene extends Phaser.Scene {
     });
   }
 
-  createProfileButton(x, y) {
-    const button = this.add.rectangle(x, y, 190, 44, 0x1565C0);
+  createProfileButton(x, y, w = 190, h = 44) {
+    const fontSize = Math.max(8, Math.min(14, w * 0.07));
+    const button = this.add.rectangle(x, y, w, h, 0x1565C0);
     button.setStrokeStyle(3, 0x42A5F5);
     button.setInteractive({ useHandCursor: true });
 
     const text = this.add.text(x, y, 'PROFILE', {
-      fontSize: '14px',
+      fontSize: `${fontSize}px`,
       fontFamily: 'Press Start 2P',
       color: '#FFFFFF',
     });

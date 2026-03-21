@@ -32,6 +32,8 @@ export class CampaignScene extends Phaser.Scene {
       }
     });
 
+    this.scale.on('resize', () => this.buildUI());
+
     this.events.on('wake', () => {
       this.starMap = JSON.parse(localStorage.getItem('levelStars') || '{}');
       this.buildUI();
@@ -70,12 +72,13 @@ export class CampaignScene extends Phaser.Scene {
     const titleBanner = this.add.rectangle(width / 2, 50, width * 0.6, 80, 0x000000, 0.7);
     titleBanner.setStrokeStyle(3, 0xFFD700);
 
+    const titleSize = Math.max(18, Math.min(38, width * 0.04));
     const title = this.add.text(width / 2, 40, 'ROMAN CAMPAIGN', {
-      fontSize: '38px',
+      fontSize: `${titleSize}px`,
       fontFamily: 'Press Start 2P',
       color: '#FFD700',
       stroke: '#000000',
-      strokeThickness: 6,
+      strokeThickness: Math.max(3, titleSize * 0.16),
     });
     title.setOrigin(0.5);
 
@@ -119,8 +122,8 @@ export class CampaignScene extends Phaser.Scene {
     const difficulties = ['easy', 'normal', 'hard'];
     const colors = { easy: 0x4CAF50, normal: 0xFFD700, hard: 0xE53935 };
     const labels = { easy: 'EASY', normal: 'NORMAL', hard: 'HARD' };
-    const btnW = 100;
-    const gap = 8;
+    const btnW = Math.min(100, (cx * 0.8) / 3);
+    const gap = Math.min(8, cx * 0.02);
     const totalW = difficulties.length * btnW + (difficulties.length - 1) * gap;
     const startX = cx - totalW / 2;
 
@@ -480,18 +483,26 @@ export class CampaignScene extends Phaser.Scene {
   }
 
   createBottomButtons(width, height) {
-    this.createBackButton(width / 2 - 230, height - 50);
-    this.createResetButton(width / 2 - 10, height - 50);
-    this.createProfileButton(width / 2 + 210, height - 50);
+    const btnW = Math.min(190, (width - 40) / 3 - 10);
+    const btnH = Math.min(44, height * 0.07);
+    const gap = Math.min(20, width * 0.02);
+    const totalBtnArea = btnW * 3 + gap * 2;
+    const startX = width / 2 - totalBtnArea / 2 + btnW / 2;
+    const btnY = height - Math.min(50, height * 0.08);
+    const btnFontSize = Math.max(10, Math.min(18, btnW * 0.09));
+
+    this.createBackButton(startX, btnY, btnW, btnH, btnFontSize);
+    this.createResetButton(startX + btnW + gap, btnY, btnW, btnH, btnFontSize);
+    this.createProfileButton(startX + (btnW + gap) * 2, btnY, btnW, btnH, Math.max(9, btnFontSize - 2));
   }
 
-  createBackButton(x, y) {
-    const button = this.add.rectangle(x, y, 190, 44, 0x8B4513);
+  createBackButton(x, y, w = 190, h = 44, fontSize = 18) {
+    const button = this.add.rectangle(x, y, w, h, 0x8B4513);
     button.setStrokeStyle(3, 0xFFD700);
     button.setInteractive({ useHandCursor: true });
 
     const text = this.add.text(x, y, 'BACK', {
-      fontSize: '18px',
+      fontSize: `${fontSize}px`,
       fontFamily: 'Press Start 2P',
       color: '#FFFFFF',
     });
@@ -508,13 +519,13 @@ export class CampaignScene extends Phaser.Scene {
     });
   }
 
-  createResetButton(x, y) {
-    const button = this.add.rectangle(x, y, 190, 44, 0xCC0000);
+  createResetButton(x, y, w = 190, h = 44, fontSize = 18) {
+    const button = this.add.rectangle(x, y, w, h, 0xCC0000);
     button.setStrokeStyle(3, 0xFF0000);
     button.setInteractive({ useHandCursor: true });
 
     const text = this.add.text(x, y, 'RESET', {
-      fontSize: '18px',
+      fontSize: `${fontSize}px`,
       fontFamily: 'Press Start 2P',
       color: '#FFFFFF',
     });
@@ -528,13 +539,13 @@ export class CampaignScene extends Phaser.Scene {
     });
   }
 
-  createProfileButton(x, y) {
-    const button = this.add.rectangle(x, y, 190, 44, 0x1565C0);
+  createProfileButton(x, y, w = 190, h = 44, fontSize = 14) {
+    const button = this.add.rectangle(x, y, w, h, 0x1565C0);
     button.setStrokeStyle(3, 0x42A5F5);
     button.setInteractive({ useHandCursor: true });
 
     const text = this.add.text(x, y, 'PROFILE', {
-      fontSize: '14px',
+      fontSize: `${fontSize}px`,
       fontFamily: 'Press Start 2P',
       color: '#FFFFFF',
     });
