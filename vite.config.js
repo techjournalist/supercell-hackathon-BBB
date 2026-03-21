@@ -5,6 +5,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@supabase/supabase-js': path.resolve('./supabase-cdn-shim.js'),
+      'phaser': path.resolve('./phaser-cdn-shim.js'),
     },
   },
   server: {
@@ -23,11 +24,7 @@ export default defineConfig({
     minify: 'esbuild',
     chunkSizeWarningLimit: 2000,
     rollupOptions: {
-      external: ['phaser'],
       output: {
-        globals: {
-          phaser: 'Phaser',
-        },
         manualChunks(id) {
           if (id.includes('node_modules/tone')) {
             return 'tone';
