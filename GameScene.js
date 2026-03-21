@@ -43,7 +43,6 @@ export class GameScene extends BaseGameScene {
       try {
         Tone.Destination.volume.value = Tone.gainToDb(savedVolume);
       } catch (e) {
-        console.log('Tone.js volume set failed:', e);
       }
     }
     
@@ -61,7 +60,6 @@ export class GameScene extends BaseGameScene {
     // Initialize sound effects manager on first user interaction
     this.input.once('pointerdown', async () => {
       await soundEffects.initialize();
-      console.log('SoundEffectsManager initialized');
     });
     
     // Battle intensity tracking
@@ -2274,7 +2272,6 @@ export class GameScene extends BaseGameScene {
         try {
           Tone.Destination.volume.value = -Infinity; // Mute
         } catch (e) {
-          console.log('Mute failed:', e);
         }
       }
       // Mute combat music
@@ -2287,7 +2284,6 @@ export class GameScene extends BaseGameScene {
         try {
           Tone.Destination.volume.value = Tone.gainToDb(restoredVolume);
         } catch (e) {
-          console.log('Unmute failed:', e);
         }
       }
       // Unmute combat music
@@ -6433,7 +6429,7 @@ export class GameScene extends BaseGameScene {
           const newProgress = this.campaignLevel + 1;
           localStorage.setItem('campaignProgress', newProgress.toString());
           this.registry.set('campaignProgress', newProgress);
-          console.log('ROMAN tutorial complete, saved:', newProgress);
+
           this.time.delayedCall(1000, () => {
             this.gameOver(true);
           });
@@ -6447,7 +6443,7 @@ export class GameScene extends BaseGameScene {
           const newProgress = this.campaignLevel + 1;
           localStorage.setItem('vikingCampaignProgress', newProgress.toString());
           this.registry.set('vikingCampaignProgress', newProgress);
-          console.log('VIKING tutorial complete, saved:', newProgress);
+
           this.time.delayedCall(1000, () => {
             this.gameOver(true);
           });
@@ -6461,7 +6457,7 @@ export class GameScene extends BaseGameScene {
           const newProgress = this.alienLevel + 1;
           localStorage.setItem('alienCampaignProgress', newProgress.toString());
           this.registry.set('alienCampaignProgress', newProgress);
-          console.log('ALIEN tutorial complete, saved:', newProgress);
+
           this.time.delayedCall(1000, () => {
             this.gameOver(true);
           });
@@ -6499,7 +6495,7 @@ export class GameScene extends BaseGameScene {
             const newProgress = this.alienLevel + 1;
             localStorage.setItem('alienCampaignProgress', newProgress.toString());
             this.registry.set('alienCampaignProgress', newProgress);
-            console.log('ALIEN gold rush complete, saved:', newProgress);
+
           }
           this.time.delayedCall(1000, () => {
             this.gameOver(true);
@@ -6532,7 +6528,7 @@ export class GameScene extends BaseGameScene {
             const newProgress = this.alienLevel + 1;
             localStorage.setItem('alienCampaignProgress', newProgress.toString());
             this.registry.set('alienCampaignProgress', newProgress);
-            console.log('ALIEN mind control complete, saved:', newProgress);
+
           }
           this.time.delayedCall(1000, () => {
             this.gameOver(true);
@@ -6575,17 +6571,17 @@ export class GameScene extends BaseGameScene {
               const newProgress = this.campaignLevel + 1;
               localStorage.setItem('vikingCampaignProgress', newProgress.toString());
               this.registry.set('vikingCampaignProgress', newProgress);
-              console.log('VIKING survival complete, saved:', newProgress);
+
             } else if (this.alienCampaign) {
               const newProgress = this.alienLevel + 1;
               localStorage.setItem('alienCampaignProgress', newProgress.toString());
               this.registry.set('alienCampaignProgress', newProgress);
-              console.log('ALIEN survival complete, saved:', newProgress);
+
             } else {
               const newProgress = this.campaignLevel + 1;
               localStorage.setItem('campaignProgress', newProgress.toString());
               this.registry.set('campaignProgress', newProgress);
-              console.log('ROMAN survival complete, saved:', newProgress);
+
             }
           }
           this.time.delayedCall(1000, () => {
@@ -6607,7 +6603,7 @@ export class GameScene extends BaseGameScene {
             const newProgress = this.campaignLevel + 1;
             localStorage.setItem('campaignProgress', newProgress.toString());
             this.registry.set('campaignProgress', newProgress);
-            console.log('ROMAN spell mastery complete, saved:', newProgress);
+
           }
           this.time.delayedCall(1000, () => {
             this.gameOver(true);
@@ -6638,7 +6634,7 @@ export class GameScene extends BaseGameScene {
             const newProgress = this.campaignLevel + 1;
             localStorage.setItem('vikingCampaignProgress', newProgress.toString());
             this.registry.set('vikingCampaignProgress', newProgress);
-            console.log('VIKING spell mastery complete, saved:', newProgress);
+
           }
           this.time.delayedCall(1000, () => {
             this.gameOver(true);
@@ -7017,9 +7013,7 @@ export class GameScene extends BaseGameScene {
   }
   
   completeCampaignLevel() {
-    console.log('completeCampaignLevel() called. levelCompleted:', this.levelCompleted);
     if (this.levelCompleted) {
-      console.log('Already completed, returning early');
       return; // Prevent double trigger
     }
     this.levelCompleted = true;
@@ -7030,7 +7024,7 @@ export class GameScene extends BaseGameScene {
       const newProgress = this.campaignLevel + 1;
       localStorage.setItem('vikingCampaignProgress', newProgress.toString());
       this.registry.set('vikingCampaignProgress', newProgress);
-      console.log('VIKING LEVEL COMPLETE - saved:', newProgress);
+
     } else {
       // Roman campaign (default)
       const newProgress = this.campaignLevel + 1;
@@ -7041,17 +7035,11 @@ export class GameScene extends BaseGameScene {
       
       this.registry.set('campaignProgress', newProgress);
       
-      console.log('=== CAMPAIGN LEVEL COMPLETE ===');
-      console.log('Completed level:', this.campaignLevel);
-      console.log('Tried to save:', newProgress);
-      console.log('Verify read back:', verifyRead);
-      console.log('Match:', verifyRead === newProgress.toString());
-      console.log('============================');
+
     }
     
     // Show victory after short delay
     this.time.delayedCall(1000, () => {
-      console.log('Calling gameOver(true)');
       this.gameOver(true);
     });
   }
@@ -7836,7 +7824,11 @@ export class GameScene extends BaseGameScene {
     if (this.fogUpdateTimer) {
       this.fogUpdateTimer.remove();
     }
-    
+    if (this._bottomBarAutoHideTimer) {
+      this._bottomBarAutoHideTimer.remove();
+      this._bottomBarAutoHideTimer = null;
+    }
+
     // Stop combat music
     this.stopCombatMusic();
   }

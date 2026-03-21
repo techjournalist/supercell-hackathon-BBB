@@ -393,6 +393,6 @@ export class LeaderboardScene extends Phaser.Scene {
       localStorage.setItem(playerKey, timeInSeconds.toString());
     }
     
-    console.log(`Added to ${campaign} leaderboard: ${playerName} - ${timeInSeconds}s`);
+
   }
 }

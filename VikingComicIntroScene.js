@@ -20,7 +20,7 @@ export class VikingComicIntroScene extends Phaser.Scene {
       const startKey = 'viking_campaign_start';
       if (!localStorage.getItem(startKey)) {
         localStorage.setItem(startKey, Date.now().toString());
-        console.log('Started tracking Viking campaign time');
+
       }
     }
     

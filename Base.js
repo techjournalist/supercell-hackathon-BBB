@@ -271,7 +271,7 @@ export class Base extends Phaser.GameObjects.Container {
         const newProgress = this.scene.campaignLevel + 1;
         localStorage.setItem('vikingCampaignProgress', newProgress.toString());
         this.scene.registry.set('vikingCampaignProgress', newProgress);
-        console.log('VIKING campaign progress saved:', newProgress);
+
         campaignType = 'viking';
         if (this.scene.campaignLevel === 6) {
           campaignComplete = true;
@@ -280,7 +280,7 @@ export class Base extends Phaser.GameObjects.Container {
         const newProgress = this.scene.alienLevel + 1;
         localStorage.setItem('alienCampaignProgress', newProgress.toString());
         this.scene.registry.set('alienCampaignProgress', newProgress);
-        console.log('ALIEN campaign progress saved:', newProgress);
+
         campaignType = 'alien';
         if (this.scene.alienLevel === 6) {
           campaignComplete = true;
@@ -290,7 +290,7 @@ export class Base extends Phaser.GameObjects.Container {
         const newProgress = this.scene.campaignLevel + 1;
         localStorage.setItem('campaignProgress', newProgress.toString());
         this.scene.registry.set('campaignProgress', newProgress);
-        console.log('ROMAN campaign progress saved:', newProgress);
+
         campaignType = 'roman';
         if (this.scene.campaignLevel === 8) {
           campaignComplete = true;
@@ -305,8 +305,6 @@ export class Base extends Phaser.GameObjects.Container {
 
       // If campaign complete, show special celebration scene
       if (campaignComplete) {
-        console.log('🎉 CAMPAIGN COMPLETE! Showing celebration...');
-        
         // Calculate total campaign time
         const campaignEndTime = Date.now();
         const campaignStartKey = `${campaignType}_campaign_start`;
@@ -315,8 +313,6 @@ export class Base extends Phaser.GameObjects.Container {
         
         // Clear the start time
         localStorage.removeItem(campaignStartKey);
-        
-        console.log(`Campaign completed in ${totalTimeSeconds} seconds`);
         
         this.scene.time.delayedCall(1000, () => {
           this.scene.cameras.main.fadeOut(1000, 0, 0, 0);

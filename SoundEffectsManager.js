@@ -836,7 +836,7 @@ export class SoundEffectsManager {
     
     this.synths = {};
     this.initialized = false;
-    console.log('SoundEffectsManager disposed');
+
   }
 }
 

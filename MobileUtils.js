@@ -1,6 +1,6 @@
 export function isMobile() {
   return /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
-    (navigator.maxTouchPoints > 1 && window.innerWidth < 1200);
+    (navigator.maxTouchPoints > 0 && window.innerWidth < 1200);
 }
 
 export function isLandscape() {

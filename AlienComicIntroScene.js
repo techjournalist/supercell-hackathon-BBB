@@ -18,7 +18,7 @@ export class AlienComicIntroScene extends Phaser.Scene {
       const startKey = 'alien_campaign_start';
       if (!localStorage.getItem(startKey)) {
         localStorage.setItem(startKey, Date.now().toString());
-        console.log('Started tracking Alien campaign time');
+
       }
     }
     

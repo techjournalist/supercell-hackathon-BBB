@@ -80,12 +80,12 @@ export class SplashScene extends Phaser.Scene {
 
     if (playPromise !== undefined) {
       playPromise.catch((err) => {
-        console.log("Autoplay with sound prevented, trying muted:", err);
+
         // If autoplay with sound fails, mute and try again
         this.videoElement.muted = true;
         this.isMuted = true;
         this.videoElement.play().catch((err2) => {
-          console.log("Muted autoplay also failed:", err2);
+
           this.transitionToMenu();
         });
 

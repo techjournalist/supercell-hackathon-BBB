@@ -10,7 +10,7 @@ export const UNIT_SPRITE_SHEETS = {};
 export class BaseGameScene extends Phaser.Scene {
   preloadGameAssets() {
     this.load.on('loaderror', (file) => {
-      console.warn(`Asset failed to load: ${file.key} (${file.url})`);
+
     });
 
     this.load.image('sky', 'https://rosebud.ai/assets/purple-sky-background.webp?764C');

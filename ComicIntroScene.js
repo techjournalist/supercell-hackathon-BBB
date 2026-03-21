@@ -13,7 +13,7 @@ export class ComicIntroScene extends Phaser.Scene {
       const startKey = 'roman_campaign_start';
       if (!localStorage.getItem(startKey)) {
         localStorage.setItem(startKey, Date.now().toString());
-        console.log('Started tracking Roman campaign time');
+
       }
     }
   }
