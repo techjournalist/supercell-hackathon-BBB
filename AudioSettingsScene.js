@@ -39,19 +39,21 @@ export class AudioSettingsScene extends Phaser.Scene {
     headerBar.setDepth(1001);
     
     // Title
+    const titleFS = Math.max(16, Math.min(panelWidth * 0.05, 32));
     const title = this.add.text(panelX, panelY - panelHeight/2 + 40, 'AUDIO SETTINGS', {
-      fontSize: '32px',
+      fontSize: `${titleFS}px`,
       fontFamily: 'Press Start 2P',
       color: '#e94560',
       stroke: '#000000',
-      strokeThickness: 4,
+      strokeThickness: Math.max(2, titleFS * 0.12),
     });
     title.setOrigin(0.5);
     title.setDepth(1002);
-    
+
     // Subtitle
+    const subFS = Math.max(8, Math.min(panelWidth * 0.02, 12));
     const subtitle = this.add.text(panelX, panelY - panelHeight/2 + 75, 'Adjust music and sound effects', {
-      fontSize: '12px',
+      fontSize: `${subFS}px`,
       fontFamily: 'Arial',
       color: '#aaaaaa',
     });
@@ -74,7 +76,7 @@ export class AudioSettingsScene extends Phaser.Scene {
     currentY += 20;
     
     const musicLabel = this.add.text(panelX - panelWidth/2 + 40, currentY, '🎵 MUSIC VOLUME', {
-      fontSize: '18px',
+      fontSize: `${Math.max(10, Math.min(panelWidth * 0.03, 18))}px`,
       fontFamily: 'Press Start 2P',
       color: '#00d4ff',
       stroke: '#000000',
@@ -105,7 +107,7 @@ export class AudioSettingsScene extends Phaser.Scene {
     
     // Music volume percentage display
     this.musicVolumeText = this.add.text(panelX + panelWidth/2 - 70, currentY, `${Math.round(musicVolume * 100)}%`, {
-      fontSize: '16px',
+      fontSize: `${Math.max(10, Math.min(panelWidth * 0.027, 16))}px`,
       fontFamily: 'Press Start 2P',
       color: '#ffffff',
       stroke: '#000000',
@@ -133,7 +135,7 @@ export class AudioSettingsScene extends Phaser.Scene {
     
     // SOUND EFFECTS VOLUME SECTION
     const sfxLabel = this.add.text(panelX - panelWidth/2 + 40, currentY, '🔊 SOUND EFFECTS VOLUME', {
-      fontSize: '18px',
+      fontSize: `${Math.max(10, Math.min(panelWidth * 0.03, 18))}px`,
       fontFamily: 'Press Start 2P',
       color: '#00d4ff',
       stroke: '#000000',
@@ -161,7 +163,7 @@ export class AudioSettingsScene extends Phaser.Scene {
     
     // SFX volume percentage display
     this.sfxVolumeText = this.add.text(panelX + panelWidth/2 - 70, currentY, `${Math.round(sfxVolume * 100)}%`, {
-      fontSize: '16px',
+      fontSize: `${Math.max(10, Math.min(panelWidth * 0.027, 16))}px`,
       fontFamily: 'Press Start 2P',
       color: '#ffffff',
       stroke: '#000000',

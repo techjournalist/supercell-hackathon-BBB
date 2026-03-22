@@ -38,7 +38,7 @@ export class VikingComicIntroScene extends Phaser.Scene {
     
     // Character name
     const nameTag = this.add.text(width * 0.42, height * 0.22, 'ERIK THE ADEQUATE', {
-      fontSize: '24px',
+      fontSize: `${Math.max(12, Math.min(width * 0.025, 24))}px`,
       fontFamily: 'Press Start 2P',
       color: '#87CEEB',
     });

@@ -39,15 +39,17 @@ export class MultiplayerSetupScene extends Phaser.Scene {
     this._drawTitle(width, height);
     this._drawModeSelect(width, height);
     this._drawBackButton(width, height);
+
   }
 
-  _drawTitle(width) {
-    this.add.text(width / 2, 64, 'MULTIPLAYER', {
-      fontSize: '42px',
+  _drawTitle(width, height) {
+    const titleFS = Math.max(18, Math.min(width * 0.04, 42));
+    this.add.text(width / 2, height * 0.12, 'MULTIPLAYER', {
+      fontSize: `${titleFS}px`,
       fontFamily: 'Press Start 2P',
       color: '#FFFFFF',
       stroke: '#000000',
-      strokeThickness: 6,
+      strokeThickness: Math.max(3, titleFS * 0.14),
     }).setOrigin(0.5);
   }
 
@@ -58,13 +60,14 @@ export class MultiplayerSetupScene extends Phaser.Scene {
     ];
 
     const cardW = Math.min(320, (width - 80) / 2);
-    const cardH = 220;
-    const gap = 32;
+    const cardH = Math.min(220, height * 0.5);
+    const gap = Math.min(32, width * 0.03);
     const startX = width / 2 - cardW - gap / 2;
     const y = height * 0.48;
 
+    const labelFS = Math.max(12, Math.min(width * 0.018, 18));
     const label = this.add.text(width / 2, height * 0.23, 'Choose a mode:', {
-      fontSize: '18px', fontFamily: 'Arial', color: '#cccccc',
+      fontSize: `${labelFS}px`, fontFamily: 'Arial', color: '#cccccc',
     }).setOrigin(0.5);
     this._elements.modeLabel = label;
 
@@ -83,13 +86,16 @@ export class MultiplayerSetupScene extends Phaser.Scene {
     bg.lineStyle(2, mode.border, 0.8);
     bg.strokeRoundedRect(x, y, w, h, 14);
 
-    const iconText = this.add.text(x + w / 2, y + 40, mode.icon, { fontSize: '40px' }).setOrigin(0.5);
-    const labelText = this.add.text(x + w / 2, y + 95, mode.label, {
-      fontSize: '16px', fontFamily: 'Press Start 2P', color: '#ffffff',
+    const iconFS = Math.max(24, Math.min(w * 0.12, 40));
+    const labelFS = Math.max(10, Math.min(w * 0.05, 16));
+    const subFS = Math.max(8, Math.min(w * 0.035, 11));
+    const iconText = this.add.text(x + w / 2, y + h * 0.18, mode.icon, { fontSize: `${iconFS}px` }).setOrigin(0.5);
+    const labelText = this.add.text(x + w / 2, y + h * 0.43, mode.label, {
+      fontSize: `${labelFS}px`, fontFamily: 'Press Start 2P', color: '#ffffff',
       align: 'center', lineSpacing: 6,
     }).setOrigin(0.5);
-    const subText = this.add.text(x + w / 2, y + h - 30, mode.sub, {
-      fontSize: '11px', fontFamily: 'Arial', color: '#aaaaaa', align: 'center',
+    const subText = this.add.text(x + w / 2, y + h - h * 0.14, mode.sub, {
+      fontSize: `${subFS}px`, fontFamily: 'Arial', color: '#aaaaaa', align: 'center',
     }).setOrigin(0.5);
 
     const hit = this.add.rectangle(x + w / 2, y + h / 2, w, h, 0, 0)
@@ -616,8 +622,9 @@ export class MultiplayerSetupScene extends Phaser.Scene {
   }
 
   _drawBackButton(width, height) {
-    const back = this.add.text(80, height - 36, '← MAIN MENU', {
-      fontSize: '12px', fontFamily: 'Arial', color: '#5a4a2a', letterSpacing: 2,
+    const backFS = Math.max(9, Math.min(width * 0.013, 12));
+    const back = this.add.text(width * 0.08, height - Math.min(36, height * 0.08), '← MAIN MENU', {
+      fontSize: `${backFS}px`, fontFamily: 'Arial', color: '#5a4a2a', letterSpacing: 2,
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
     back.on('pointerover', () => back.setColor('#c9941a'));
     back.on('pointerout', () => back.setColor('#5a4a2a'));

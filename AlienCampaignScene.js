@@ -62,30 +62,33 @@ export class AlienCampaignScene extends Phaser.Scene {
     overlay.setOrigin(0);
 
     const titleFontSize = Math.max(18, Math.min(38, width * 0.04));
-    const title = this.add.text(width / 2, 44, 'ALIEN CAMPAIGN', {
+    const subtitleFS = Math.max(10, Math.min(16, width * 0.018));
+    const progressFS = Math.max(8, Math.min(11, width * 0.012));
+
+    const title = this.add.text(width / 2, height * 0.1, 'ALIEN CAMPAIGN', {
       fontSize: `${titleFontSize}px`,
       fontFamily: 'Press Start 2P',
       color: '#39FF14',
       stroke: '#000000',
-      strokeThickness: 6,
+      strokeThickness: Math.max(3, titleFontSize * 0.16),
     });
     title.setOrigin(0.5);
 
-    const subtitle = this.add.text(width / 2, 90, 'Overlord Zyx-9', {
-      fontSize: '16px',
+    const subtitle = this.add.text(width / 2, height * 0.2, 'Overlord Zyx-9', {
+      fontSize: `${subtitleFS}px`,
       fontFamily: 'Press Start 2P',
       color: '#AAAAAA',
     });
     subtitle.setOrigin(0.5);
 
-    const progressText = this.add.text(width / 2, 116, `PROGRESS: ${alienProgress}/6 INVASIONS COMPLETE`, {
-      fontSize: '11px',
+    const progressText = this.add.text(width / 2, height * 0.26, `PROGRESS: ${alienProgress}/6 INVASIONS COMPLETE`, {
+      fontSize: `${progressFS}px`,
       fontFamily: 'Press Start 2P',
       color: '#AAAAAA',
     });
     progressText.setOrigin(0.5);
 
-    this.createGlobalDifficultyBar(width / 2, 144, globalDifficulty);
+    this.createGlobalDifficultyBar(width / 2, height * 0.32, globalDifficulty);
 
     const levels = [
       { num: 1, name: 'Abduction 101', desc: 'Tutorial' },
@@ -96,8 +99,10 @@ export class AlienCampaignScene extends Phaser.Scene {
       { num: 6, name: 'World Domination', desc: 'Final assault' },
     ];
 
-    const startY = 184;
-    const spacing = 70;
+    const listTop = height * 0.38;
+    const listBottom = height - Math.min(60, height * 0.12);
+    const spacing = Math.min(70, (listBottom - listTop) / levels.length);
+    const startY = listTop;
 
     levels.forEach((level, index) => {
       const y = startY + index * spacing;
@@ -120,8 +125,8 @@ export class AlienCampaignScene extends Phaser.Scene {
     const difficulties = ['easy', 'normal', 'hard'];
     const colors = { easy: 0x4CAF50, normal: 0x39FF14, hard: 0xE53935 };
     const labels = { easy: 'EASY', normal: 'NORMAL', hard: 'HARD' };
-    const btnW = 100;
-    const gap = 8;
+    const btnW = Math.min(100, (cx * 0.8) / 3);
+    const gap = Math.min(8, cx * 0.02);
     const totalW = difficulties.length * btnW + (difficulties.length - 1) * gap;
     const startX = cx - totalW / 2;
 

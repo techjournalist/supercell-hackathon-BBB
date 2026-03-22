@@ -69,11 +69,14 @@ export class CampaignScene extends Phaser.Scene {
     const overlay = this.add.rectangle(0, 0, width, height, 0x000000, 0.3);
     overlay.setOrigin(0);
 
-    const titleBanner = this.add.rectangle(width / 2, 50, width * 0.6, 80, 0x000000, 0.7);
+    const bannerY = height * 0.1;
+    const bannerH = Math.min(80, height * 0.16);
+    const titleBanner = this.add.rectangle(width / 2, bannerY, width * 0.6, bannerH, 0x000000, 0.7);
     titleBanner.setStrokeStyle(3, 0xFFD700);
 
     const titleSize = Math.max(18, Math.min(38, width * 0.04));
-    const title = this.add.text(width / 2, 40, 'ROMAN CAMPAIGN', {
+    const progressFS = Math.max(9, Math.min(12, width * 0.013));
+    const title = this.add.text(width / 2, bannerY - bannerH * 0.12, 'ROMAN CAMPAIGN', {
       fontSize: `${titleSize}px`,
       fontFamily: 'Press Start 2P',
       color: '#FFD700',
@@ -82,8 +85,8 @@ export class CampaignScene extends Phaser.Scene {
     });
     title.setOrigin(0.5);
 
-    const progressText = this.add.text(width / 2, 78, `PROGRESS: ${unlockedLevel - 1}/8 BATTLES WON`, {
-      fontSize: '12px',
+    const progressText = this.add.text(width / 2, bannerY + bannerH * 0.28, `PROGRESS: ${unlockedLevel - 1}/8 BATTLES WON`, {
+      fontSize: `${progressFS}px`,
       fontFamily: 'Press Start 2P',
       color: '#AAAAAA',
       stroke: '#000000',
@@ -91,7 +94,7 @@ export class CampaignScene extends Phaser.Scene {
     });
     progressText.setOrigin(0.5);
 
-    this.createGlobalDifficultyBar(width / 2, 115, globalDifficulty, 'roman');
+    this.createGlobalDifficultyBar(width / 2, height * 0.25, globalDifficulty, 'roman');
 
     const levels = [
       { num: 1, name: 'Basic Training', desc: 'Learn the basics', icon: '⚔️', x: 0.15, y: 0.75 },

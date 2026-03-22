@@ -33,9 +33,10 @@ export class MultiplayerVictoryScene extends Phaser.Scene {
     const stats = this.registry.get('multiplayerStats') || {};
     const winnerColor = winnerNum === 1 ? '#4488FF' : '#FF4488';
 
+    const titleFS = Math.max(20, Math.min(width * 0.06, 58));
     const winnerText = this.add.text(width / 2, height * 0.22, `PLAYER ${winnerNum} WINS!`, {
-      fontSize: '58px', fontFamily: 'Press Start 2P', color: winnerColor,
-      stroke: '#000000', strokeThickness: 8,
+      fontSize: `${titleFS}px`, fontFamily: 'Press Start 2P', color: winnerColor,
+      stroke: '#000000', strokeThickness: Math.max(4, titleFS * 0.14),
     }).setOrigin(0.5);
 
     this.tweens.add({
@@ -43,7 +44,7 @@ export class MultiplayerVictoryScene extends Phaser.Scene {
       duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
     });
 
-    this.add.text(width / 2, height * 0.38, '🏆', { fontSize: '72px' }).setOrigin(0.5);
+    this.add.text(width / 2, height * 0.38, '🏆', { fontSize: `${Math.max(36, Math.min(width * 0.07, 72))}px` }).setOrigin(0.5);
 
     const gt = stats.gameTime || 0;
     this.add.text(width / 2, height * 0.52,
@@ -71,9 +72,10 @@ export class MultiplayerVictoryScene extends Phaser.Scene {
       ? (forfeit ? 'OPPONENT LEFT\nYOU WIN!' : 'VICTORY!')
       : (forfeit ? 'CONNECTION LOST' : 'DEFEAT');
 
+    const onlineTitleFS = Math.max(18, Math.min(width * 0.05, 52));
     const title = this.add.text(width / 2, height * 0.18, titleText, {
-      fontSize: '52px', fontFamily: 'Press Start 2P', color: titleColor,
-      stroke: '#000', strokeThickness: 8, align: 'center', lineSpacing: 8,
+      fontSize: `${onlineTitleFS}px`, fontFamily: 'Press Start 2P', color: titleColor,
+      stroke: '#000', strokeThickness: Math.max(4, onlineTitleFS * 0.15), align: 'center', lineSpacing: 8,
     }).setOrigin(0.5);
 
     this.tweens.add({
@@ -81,7 +83,7 @@ export class MultiplayerVictoryScene extends Phaser.Scene {
       duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
     });
 
-    this.add.text(width / 2, height * 0.36, won ? '🏆' : '💀', { fontSize: '64px' }).setOrigin(0.5);
+    this.add.text(width / 2, height * 0.36, won ? '🏆' : '💀', { fontSize: `${Math.max(32, Math.min(width * 0.06, 64))}px` }).setOrigin(0.5);
 
     const panelW = Math.min(600, width * 0.8);
     const panelX = width / 2 - panelW / 2;

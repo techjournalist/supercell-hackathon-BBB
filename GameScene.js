@@ -783,28 +783,35 @@ export class GameScene extends BaseGameScene {
   }
   
   createEnemyBaseHealthUI(width, topBarHeight) {
-    const centerY = topBarHeight + 25; // Move BELOW the top bar
-    const rightX = width - 220; // Position from right edge
-    
+    const mobile = this._mobileUI;
+    const panelW = mobile ? Math.min(160, width * 0.2) : 200;
+    const panelH = mobile ? 36 : 45;
+    const centerY = topBarHeight + (mobile ? 18 : 25);
+    const rightX = width - panelW - 20;
+    const iconSize = mobile ? 16 : 20;
+    const labelFS = mobile ? 8 : 10;
+    const hpFS = mobile ? 7 : 9;
+    const barW = panelW - 60;
+
     // Background box for better visibility
-    this.enemyBaseHealthBg = this.add.rectangle(rightX, centerY - 5, 200, 45, 0x000000, 0.85);
+    this.enemyBaseHealthBg = this.add.rectangle(rightX, centerY - 5, panelW, panelH, 0x000000, 0.85);
     this.enemyBaseHealthBg.setOrigin(0, 0);
     this.enemyBaseHealthBg.setStrokeStyle(2, 0xFF6666);
     this.enemyBaseHealthBg.setScrollFactor(0);
     this.enemyBaseHealthBg.setDepth(100);
-    
+
     // Enemy base icon/indicator
     this.enemyBaseIcon = this.add.text(rightX + 15, centerY + 10, '🏰', {
-      fontSize: '20px',
+      fontSize: `${iconSize}px`,
     });
     this.enemyBaseIcon.setOrigin(0, 0.5);
     this.enemyBaseIcon.setScrollFactor(0);
     this.enemyBaseIcon.setDepth(101);
-    this.enemyBaseIcon.setTint(0xFF6666); // Reddish tint for enemy
-    
+    this.enemyBaseIcon.setTint(0xFF6666);
+
     // "ENEMY BASE" label
     this.enemyBaseLabel = this.add.text(rightX + 45, centerY + 2, 'ENEMY BASE', {
-      fontSize: '10px',
+      fontSize: `${labelFS}px`,
       fontFamily: 'Press Start 2P',
       color: '#FF6666',
       stroke: '#000000',
@@ -813,23 +820,23 @@ export class GameScene extends BaseGameScene {
     this.enemyBaseLabel.setOrigin(0, 0.5);
     this.enemyBaseLabel.setScrollFactor(0);
     this.enemyBaseLabel.setDepth(101);
-    
+
     // Health bar background
-    this.enemyBaseHealthBarBg = this.add.rectangle(rightX + 45, centerY + 18, 140, 16, 0x333333, 0.9);
+    this.enemyBaseHealthBarBg = this.add.rectangle(rightX + 45, centerY + 18, barW, mobile ? 12 : 16, 0x333333, 0.9);
     this.enemyBaseHealthBarBg.setOrigin(0, 0.5);
     this.enemyBaseHealthBarBg.setStrokeStyle(2, 0x666666);
     this.enemyBaseHealthBarBg.setScrollFactor(0);
     this.enemyBaseHealthBarBg.setDepth(101);
-    
+
     // Health bar fill (red)
-    this.enemyBaseHealthBarFill = this.add.rectangle(rightX + 47, centerY + 18, 136, 12, 0xFF3333);
+    this.enemyBaseHealthBarFill = this.add.rectangle(rightX + 47, centerY + 18, barW - 4, mobile ? 8 : 12, 0xFF3333);
     this.enemyBaseHealthBarFill.setOrigin(0, 0.5);
     this.enemyBaseHealthBarFill.setScrollFactor(0);
     this.enemyBaseHealthBarFill.setDepth(102);
-    
+
     // Health text (shows actual numbers)
-    this.enemyBaseHealthText = this.add.text(rightX + 115, centerY + 18, '1000/1000', {
-      fontSize: '9px',
+    this.enemyBaseHealthText = this.add.text(rightX + 45 + barW / 2, centerY + 18, '1000/1000', {
+      fontSize: `${hpFS}px`,
       fontFamily: 'Press Start 2P',
       color: '#FFFFFF',
       stroke: '#000000',
@@ -1521,7 +1528,7 @@ export class GameScene extends BaseGameScene {
 
   createMobileBottomBar(buttonSize, spacing) {
     const { width, height } = this.scale;
-    const barHeight = 70;
+    const barHeight = height < 500 ? 54 : 70;
     const barY = height - barHeight;
 
     this._bottomBarVisible = true;

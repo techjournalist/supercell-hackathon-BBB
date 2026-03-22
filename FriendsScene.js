@@ -82,9 +82,10 @@ export class FriendsScene extends Phaser.Scene {
   }
 
   _drawHeader(width, height) {
+    const headerFS = Math.max(16, Math.min(width * 0.035, 32));
     this.add.text(width / 2, height * 0.1, 'FRIENDS', {
-      fontSize: '32px', fontFamily: 'Press Start 2P, Arial', color: '#e8d5a3',
-      stroke: '#3a1a00', strokeThickness: 4,
+      fontSize: `${headerFS}px`, fontFamily: 'Press Start 2P, Arial', color: '#e8d5a3',
+      stroke: '#3a1a00', strokeThickness: Math.max(2, headerFS * 0.12),
     }).setOrigin(0.5);
 
     this.add.text(width / 2, height * 0.1 + 46, `Your ID: ${this._sessionId?.slice(0, 12)}...`, {
@@ -94,8 +95,8 @@ export class FriendsScene extends Phaser.Scene {
 
   _drawTabs(width, height) {
     const tabY = height * 0.22;
-    const tabW = 160;
-    const gap = 12;
+    const tabW = Math.min(160, (width * 0.85 - 24) / 3);
+    const gap = Math.min(12, width * 0.012);
     const totalW = tabW * 3 + gap * 2;
     const startX = width / 2 - totalW / 2;
 
