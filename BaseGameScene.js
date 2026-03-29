@@ -1,8 +1,8 @@
 import Phaser from 'phaser';
 import { CONFIG } from './config.js';
 
-export const SPRITE_SHEET_FRAME_WIDTH = 96;
-export const SPRITE_SHEET_FRAME_HEIGHT = 96;
+export const SPRITE_SHEET_FRAME_WIDTH = 424;
+export const SPRITE_SHEET_FRAME_HEIGHT = 416;
 export const SPRITE_SHEET_FRAME_COUNT = 6;
 
 export const UNIT_SPRITE_SHEETS = {
