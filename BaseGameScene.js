@@ -5,7 +5,22 @@ export const SPRITE_SHEET_FRAME_WIDTH = 96;
 export const SPRITE_SHEET_FRAME_HEIGHT = 96;
 export const SPRITE_SHEET_FRAME_COUNT = 6;
 
-export const UNIT_SPRITE_SHEETS = {};
+export const UNIT_SPRITE_SHEETS = {
+  worker:        { walk: '/sprites/worker_walk.png',        attack: '/sprites/worker_attack.png' },
+  legionary:     { walk: '/sprites/legionary_walk.png',     attack: '/sprites/legionary_attack.png' },
+  pilum:         { walk: '/sprites/pilum_walk.png',         attack: '/sprites/pilum_attack.png' },
+  centurion:     { walk: '/sprites/centurion_walk.png',     attack: '/sprites/centurion_attack.png' },
+  scout:         { walk: '/sprites/scout_walk.png',         attack: '/sprites/scout_attack.png' },
+  thrall:        { walk: '/sprites/thrall_walk.png',        attack: '/sprites/thrall_attack.png' },
+  berserker:     { walk: '/sprites/berserker_walk.png',     attack: '/sprites/berserker_attack.png' },
+  axeThrower:    { walk: '/sprites/axeThrower_walk.png',    attack: '/sprites/axeThrower_attack.png' },
+  jarl:          { walk: '/sprites/jarl_walk.png',          attack: '/sprites/jarl_attack.png' },
+  harvester:     { walk: '/sprites/harvester_walk.png',     attack: '/sprites/harvester_attack.png' },
+  drone:         { walk: '/sprites/drone_walk.png',         attack: '/sprites/drone_attack.png' },
+  blaster:       { walk: '/sprites/blaster_walk.png',       attack: '/sprites/blaster_attack.png' },
+  overlord:      { walk: '/sprites/overlord_walk.png',      attack: '/sprites/overlord_attack.png' },
+  'alien-scout': { walk: '/sprites/alien-scout_walk.png',   attack: '/sprites/alien-scout_attack.png' },
+};
 
 export class BaseGameScene extends Phaser.Scene {
   preloadGameAssets() {
